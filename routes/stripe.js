@@ -87,14 +87,22 @@ router.post('/create-checkout-session', requireAuth, async (req, res) => {
 });
 
 // Handle successful payment (webhook)
-router.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const config = require('../config');
+  
+  console.log('Webhook received:', {
+    hasSignature: !!sig,
+    bodyType: typeof req.body,
+    bodyLength: req.body ? req.body.length : 0,
+    webhookSecret: config.STRIPE_WEBHOOK_SECRET ? 'Set' : 'Not set'
+  });
   
   let event;
   
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, config.STRIPE_WEBHOOK_SECRET);
+    console.log('Webhook signature verified successfully');
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);

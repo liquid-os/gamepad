@@ -21,6 +21,9 @@ const PORT = config.PORT;
 // Connect to MongoDB
 connectDB();
 
+// Stripe webhook needs raw body for signature verification
+app.use('/api/stripe/webhook', express.raw({type: 'application/json'}));
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
