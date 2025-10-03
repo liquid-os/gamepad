@@ -11,5 +11,10 @@ module.exports = {
   PORT: 3000,
   
   // Free Games - Games that all users automatically own (like Wii Sports)
-  FREE_GAMES: ['tictactoe'] // Add game IDs that should be free for all users
+  FREE_GAMES: ['tictactoe', 'trivia'], // Add game IDs that should be free for all users
+  
+  // Stripe Configuration - Replace with your actual Stripe test keys
+  STRIPE_SECRET_KEY: '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',
+  STRIPE_PUBLISHABLE_KEY: 'pk_live_51SE3RsAmeE6qn0TrpBdG5twAazBGVz7lciz4mDrIS9JEysPLH9KzsHQ79Y2NAfeBLiCmZZ3QlUQRVvMN1BXWNCPJ00uP4XcBXI', // Get from Stripe Dashboard  
+  STRIPE_WEBHOOK_SECRET: 'whsec_tpUZe4ctOvOAnKMN6T5y1br30YmURLxN'
 };

@@ -42,6 +42,20 @@ const gameSchema = new mongoose.Schema({
     type: String,
     default: '🎮'
   },
+  images: [{
+    url: {
+      type: String,
+      required: true
+    },
+    caption: {
+      type: String,
+      default: ''
+    },
+    isMain: {
+      type: Boolean,
+      default: false
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

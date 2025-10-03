@@ -46,6 +46,7 @@ app.use(getCurrentUser);
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);
+app.use('/api/stripe', require('./routes/stripe'));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));

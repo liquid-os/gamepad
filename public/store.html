@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Game Store - Party Game Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    .header p {
+      color: #666;
+      font-size: 1.1em;
+    }
+    
+    .user-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8f9fa;
+      padding: 15px 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .user-coins {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #28a745;
+    }
+    
+    .back-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .back-btn:hover {
+      background: #5a6268;
+    }
+    
+    .store-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 30px;
+      margin-top: 30px;
+    }
+    
+    .game-card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .game-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .game-card-content {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .game-image-section {
+      position: relative;
+    }
+
+    .game-image-container {
+      position: relative;
+      width: 100%;
+      height: 150px;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+
+    .game-image-container:hover {
+      transform: scale(1.05);
+    }
+
+    .game-main-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .gallery-indicator {
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+    .game-info-section {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .game-title {
+      font-size: 1.3em;
+      font-weight: bold;
+      color: #333;
+      margin: 0;
+    }
+
+    .game-status {
+      font-size: 0.9em;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 15px;
+      background: #e9ecef;
+    }
+
+    .game-description {
+      color: #666;
+      line-height: 1.5;
+      margin: 10px 0;
+      font-size: 0.9em;
+    }
+
+    .game-details {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+
+    .player-count, .game-category {
+      font-size: 0.8em;
+      color: #666;
+      background: #f8f9fa;
+      padding: 5px 10px;
+      border-radius: 10px;
+    }
+
+    .game-actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .purchase-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      flex: 1;
+    }
+
+    .purchase-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .stripe-btn {
+      background: linear-gradient(135deg, #635bff 0%, #7c3aed 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      flex: 1;
+    }
+
+    .stripe-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(99, 91, 255, 0.3);
+    }
+
+    .owned-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: not-allowed;
+      flex: 1;
+    }
+
+    .insufficient-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: not-allowed;
+      flex: 1;
+    }
+
+    .price-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+
+    .coin-price {
+      color: #28a745;
+      font-weight: bold;
+    }
+
+    .money-price {
+      color: #007bff;
+      font-weight: bold;
+    }
+
+    /* Image Gallery Modal */
+    .gallery-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.9);
+    }
+
+    .gallery-content {
+      position: relative;
+      margin: auto;
+      padding: 20px;
+      width: 90%;
+      max-width: 800px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .gallery-close {
+      position: absolute;
+      top: 15px;
+      right: 35px;
+      color: #f1f1f1;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .gallery-close:hover {
+      color: #bbb;
+    }
+
+    .gallery-main-image {
+      width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+
+    .gallery-thumbnails {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .gallery-thumbnail {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 5px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .gallery-thumbnail:hover,
+    .gallery-thumbnail.active {
+      opacity: 1;
+    }
+
+    .gallery-caption {
+      text-align: center;
+      color: white;
+      margin-top: 10px;
+      font-size: 1.1em;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 30px;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .gallery-nav:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .gallery-nav.prev {
+      left: 20px;
+    }
+
+    .gallery-nav.next {
+      right: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 50px;
+      color: white;
+      font-size: 1.2em;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎮 Game Store</h1>
+      <p>Discover and purchase amazing party games</p>
+    </div>
+
+    <div class="user-info">
+      <a href="/" class="back-btn">← Back to Home</a>
+      <div class="user-coins">💰 <span id="userCoins">0</span> coins</div>
+    </div>
+
+    <div id="storeContent">
+      <div class="loading">Loading games...</div>
+    </div>
+
+    <!-- Image Gallery Modal -->
+    <div id="imageGalleryModal" class="gallery-modal">
+      <div class="gallery-content">
+        <span class="gallery-close" onclick="closeImageGallery()">&times;</span>
+        <img id="galleryMainImage" class="gallery-main-image" src="" alt="">
+        <div id="galleryCaption" class="gallery-caption"></div>
+        <div id="galleryThumbnails" class="gallery-thumbnails"></div>
+        <button class="gallery-nav prev" onclick="previousImage()">‹</button>
+        <button class="gallery-nav next" onclick="nextImage()">›</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentGalleryImages = [];
+    let currentImageIndex = 0;
+    let currentUser = null;
+    let currentStoreGames = [];
+
+    // Check authentication status on page load
+    checkAuthStatus();
+    
+    // Handle payment success/cancel
+    handlePaymentResult();
+
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+          loadGameStore();
+        } else {
+          showError('Please log in to access the store');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        showError('Please log in to access the store');
+      }
+    }
+
+    async function loadGameStore() {
+      try {
+        const response = await fetch('/api/games/store');
+        const data = await response.json();
+
+        if (data.success) {
+          currentStoreGames = data.games;
+          renderGameStore(data.games, data.userCoins);
+        } else {
+          showError('Failed to load games');
+        }
+      } catch (error) {
+        console.error('Failed to load game store:', error);
+        showError('Failed to load games');
+      }
+    }
+
+    function renderGameStore(games, userCoins) {
+      const storeContent = document.getElementById('storeContent');
+      const userCoinsEl = document.getElementById('userCoins');
+      
+      userCoinsEl.textContent = userCoins;
+
+      if (games.length === 0) {
+        storeContent.innerHTML = '<div class="error">No games available</div>';
+        return;
+      }
+
+      storeContent.innerHTML = `
+        <div class="store-grid">
+          ${games.map(game => renderGameCard(game)).join('')}
+        </div>
+      `;
+    }
+
+    function renderGameCard(game) {
+      const ownedText = game.owned ? '✅ Owned' : '';
+      const freeText = game.free ? '🆓 Free' : '';
+      
+      // Get main image or first image or default thumbnail
+      const mainImage = game.images && game.images.length > 0 
+        ? game.images.find(img => img.isMain) || game.images[0]
+        : { url: game.thumbnail, caption: game.name };
+      
+      // Calculate real money price (example: 1 coin = $0.01)
+      const realMoneyPrice = (game.price * 0.01).toFixed(2);
+      
+      return `
+        <div class="game-card">
+          <div class="game-card-content">
+            <div class="game-image-section">
+              <div class="game-image-container" onclick="openImageGallery('${game.id}')">
+                <img src="${mainImage.url}" alt="${game.name}" class="game-main-image">
+                <div class="image-overlay">
+                  <span class="gallery-indicator">📷 ${game.images ? game.images.length : 0} images</span>
+                </div>
+              </div>
+            </div>
+            <div class="game-info-section">
+              <div class="game-header">
+                <h3 class="game-title">${game.name}</h3>
+                <div class="game-status">
+                  ${ownedText || freeText || ''}
+                </div>
+              </div>
+              <p class="game-description">${game.description}</p>
+              <div class="game-details">
+                <span class="player-count">👥 ${game.minPlayers}-${game.maxPlayers} players</span>
+                <span class="game-category">🏷️ ${game.category || 'strategy'}</span>
+              </div>
+              <div class="price-info">
+                <span class="coin-price">💰 ${game.price} coins</span>
+                <span class="money-price">💳 $${realMoneyPrice}</span>
+              </div>
+              <div class="game-actions">
+                ${!game.accessible && game.canAfford ? 
+                  `<button onclick="purchaseWithCoins('${game.id}')" class="purchase-btn">Buy with Coins</button>
+                   <button onclick="purchaseWithStripe('${game.id}')" class="stripe-btn">Buy with Card</button>` : 
+                  game.accessible ? 
+                    `<button class="owned-btn">${ownedText || freeText}</button>` :
+                    `<button class="insufficient-btn" disabled>Need ${game.price} coins</button>
+                     <button onclick="purchaseWithStripe('${game.id}')" class="stripe-btn">Buy with Card</button>`
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function purchaseWithCoins(gameId) {
+      try {
+        const response = await fetch(`/api/games/purchase/${gameId}`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Game purchased successfully!');
+          currentUser.coins = data.user.coins;
+          loadGameStore();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Purchase error:', error);
+        alert('Purchase failed');
+      }
+    }
+
+    async function purchaseWithStripe(gameId) {
+      try {
+        const response = await fetch(`/api/stripe/create-checkout-session`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ gameId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Redirect to Stripe Checkout
+          window.location.href = data.url;
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Stripe error:', error);
+        alert('Payment failed');
+      }
+    }
+
+    function showError(message) {
+      const storeContent = document.getElementById('storeContent');
+      storeContent.innerHTML = `<div class="error">${message}</div>`;
+    }
+
+    function handlePaymentResult() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const success = urlParams.get('success');
+      const canceled = urlParams.get('canceled');
+      
+      if (success === 'true') {
+        alert('🎉 Payment successful! Game added to your library.');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (canceled === 'true') {
+        alert('Payment canceled. You can try again anytime.');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    // Image Gallery Functions
+    function openImageGallery(gameId) {
+      const game = currentStoreGames.find(g => g.id === gameId);
+      if (!game || !game.images || game.images.length === 0) {
+        alert('No images available for this game');
+        return;
+      }
+
+      currentGalleryImages = game.images;
+      currentImageIndex = 0;
+      
+      const modal = document.getElementById('imageGalleryModal');
+      modal.style.display = 'block';
+      
+      updateGalleryDisplay();
+    }
+
+    function closeImageGallery() {
+      const modal = document.getElementById('imageGalleryModal');
+      modal.style.display = 'none';
+    }
+
+    function updateGalleryDisplay() {
+      const mainImage = document.getElementById('galleryMainImage');
+      const caption = document.getElementById('galleryCaption');
+      const thumbnails = document.getElementById('galleryThumbnails');
+      
+      if (currentGalleryImages.length === 0) return;
+      
+      const currentImage = currentGalleryImages[currentImageIndex];
+      mainImage.src = currentImage.url;
+      mainImage.alt = currentImage.caption || 'Game Image';
+      caption.textContent = currentImage.caption || `Image ${currentImageIndex + 1} of ${currentGalleryImages.length}`;
+      
+      // Update thumbnails
+      thumbnails.innerHTML = '';
+      currentGalleryImages.forEach((image, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = image.url;
+        thumb.className = `gallery-thumbnail ${index === currentImageIndex ? 'active' : ''}`;
+        thumb.onclick = () => {
+          currentImageIndex = index;
+          updateGalleryDisplay();
+        };
+        thumbnails.appendChild(thumb);
+      });
+    }
+
+    function previousImage() {
+      if (currentGalleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length;
+      updateGalleryDisplay();
+    }
+
+    function nextImage() {
+      if (currentGalleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex + 1) % currentGalleryImages.length;
+      updateGalleryDisplay();
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('imageGalleryModal');
+      if (event.target === modal) {
+        closeImageGallery();
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(event) {
+      const modal = document.getElementById('imageGalleryModal');
+      if (modal.style.display === 'block') {
+        if (event.key === 'ArrowLeft') {
+          previousImage();
+        } else if (event.key === 'ArrowRight') {
+          nextImage();
+        } else if (event.key === 'Escape') {
+          closeImageGallery();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
