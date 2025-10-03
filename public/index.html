@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Party Game Platform</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    #lobbyView, #gameView { display: none; }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e1e5e9;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-bottom: 10px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
+    .game-option { 
+      cursor: pointer; 
+      padding: 20px; 
+      border: 2px solid #e1e5e9; 
+      margin: 10px 0; 
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .game-option:hover { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      transform: translateY(-2px);
+    }
+    .game-info {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+    .game-players {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    #playerList {
+      list-style: none;
+      margin: 20px 0;
+    }
+    
+    #playerList li {
+      background: #f8f9fa;
+      padding: 10px 15px;
+      margin: 5px 0;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .lobby-code {
+      background: #667eea;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .game-end-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 600px;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    .game-end-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 150px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f8f9fa;
+      color: #495057;
+      border: 2px solid #e9ecef;
+    }
+
+    .btn-secondary:hover {
+      background: #e9ecef;
+      transform: translateY(-2px);
+    }
+
+    #finalResults {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      text-align: left;
+    }
+
+    .final-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .score-card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .score-card.winner {
+      border-left-color: #28a745;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    }
+
+    .score-card h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .score-card .score {
+      font-size: 2em;
+      font-weight: bold;
+      color: #28a745;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Party Game Hub</h1>
+
+    <div id="authView">
+      <div id="loginForm">
+        <h2>🔐 Login</h2>
+        <div class="input-group">
+          <input id="loginEmail" type="email" placeholder="Email" />
+        </div>
+        <div class="input-group">
+          <input id="loginPassword" type="password" placeholder="Password" />
+        </div>
+        <button id="loginBtn">Login</button>
+        <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+        
+        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
+          <h3>🎮 Quick Start</h3>
+          <p>Want to start playing immediately?</p>
+          <button id="quickHostBtn" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+        </div>
+      </div>
+      
+      <div id="registerForm" style="display: none;">
+        <h2>📝 Register</h2>
+        <div class="input-group">
+          <input id="registerUsername" type="text" placeholder="Username" />
+        </div>
+        <div class="input-group">
+          <input id="registerEmail" type="email" placeholder="Email" />
+        </div>
+        <div class="input-group">
+          <input id="registerPassword" type="password" placeholder="Password" />
+        </div>
+        <button id="registerBtn">Register</button>
+        <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+        
+        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
+          <h3>🎮 Quick Start</h3>
+          <p>Want to start playing immediately?</p>
+          <button id="quickHostBtn2" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="homeView" style="display: none;">
+      <div id="userInfo">
+        <h3>Welcome, <span id="userDisplayName"></span>!</h3>
+        <p>💰 Coins: <span id="userCoins">0</span></p>
+        <button id="logoutBtn" style="background: #dc3545; margin: 10px 0;">Logout</button>
+      </div>
+      
+      <div id="gameStore" style="margin: 20px 0;">
+        <h3>🛒 Game Store</h3>
+        <div id="storeGames"></div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin: 20px 0;">
+        <button id="createLobby" style="flex: 1;">📺 Host Game (TV Screen)</button>
+        <button id="joinAsPlayer" style="flex: 1; background: #28a745;">📱 Join as Player</button>
+      </div>
+      
+      <div id="joinSection" style="display: none;">
+        <div class="input-group">
+          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" maxlength="4" />
+        </div>
+        <button id="joinLobby">🚀 Join Lobby</button>
+      </div>
+  </div>
+
+  <div id="lobbyView">
+      <div class="lobby-code">Lobby Code: <span id="codeDisplay"></span></div>
+      
+      <h3>👥 Players in Lobby:</h3>
+    <ul id="playerList"></ul>
+      
+      <h3>🎯 Select a Game:</h3>
+    <div id="gameList"></div>
+      
+      <button id="exitLobby" style="background: #dc3545; margin-top: 20px;">🚪 Leave Lobby</button>
+  </div>
+
+  <div id="gameView">
+    <h2>Game Started: <span id="gameName"></span></h2>
+    <p>You are a <span id="roleDisplay"></span> in this game.</p>
+    </div>
+  </div>
+
+  <div id="gameEndView" style="display: none;">
+    <div class="game-end-container">
+      <h2>🎉 Game Complete!</h2>
+      <div id="finalResults"></div>
+      <div class="game-end-actions">
+        <button id="playAgainBtn" class="btn btn-primary">🎮 Play Another Game</button>
+        <button id="returnToLobbyBtn" class="btn btn-secondary">🏠 Return to Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket = null; // Will be created when joining a lobby
+    let currentLobbyCode = null;
+    let myName = null;
+
+    function showGame(game, gameId, role) {
+      console.log('showGame called:', game, gameId, role);
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'block';
+      gameEndView.style.display = 'none';
+      gameName.textContent = game.name;
+      roleDisplay.textContent = role;
+      
+      // Set global variables for the game client to access
+      window.currentLobbyCode = currentLobbyCode;
+      window.myName = myName;
+      
+      console.log('showGame debug - currentLobbyCode:', currentLobbyCode, 'myName:', myName, 'gameId:', gameId);
+      console.log('Set window.currentLobbyCode to:', window.currentLobbyCode);
+      console.log('Set window.myName to:', window.myName);
+      const gameUrl = `/games/${gameId}/client/index.html`;
+      console.log('Loading game in iframe:', gameUrl);
+      
+      // Create iframe for the game
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'width: 100%; height: 100vh; border: none;';
+      iframe.id = 'gameFrame';
+      
+      // Clear any existing game content and add iframe
+      const gameContainer = document.getElementById('gameView');
+      gameContainer.innerHTML = '';
+      gameContainer.appendChild(iframe);
+      
+      // Set the src after adding to DOM to ensure parent window variables are available
+      setTimeout(() => {
+        iframe.src = gameUrl;
+      }, 100);
+    }
+
+    function showGameEndScreen(data) {
+      console.log('Showing game end screen:', data);
+      
+      // Hide other views and show end screen
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      gameEndView.style.display = 'block';
+      
+      // Display final results
+      if (data.scores && Object.keys(data.scores).length > 0) {
+        const sortedScores = Object.entries(data.scores)
+          .map(([player, score]) => ({ player, score }))
+          .sort((a, b) => b.score - a.score);
+        
+        const scoresHtml = `
+          <h3>🏆 Final Scores</h3>
+          <div class="final-scores">
+            ${sortedScores.map((entry, index) => `
+              <div class="score-card ${index === 0 ? 'winner' : ''}">
+                <h4>${entry.player}</h4>
+                <div class="score">${entry.score}</div>
+                ${index === 0 ? '<p style="color: #28a745; font-weight: bold; margin-top: 10px;">🏆 Winner!</p>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        finalResults.innerHTML = scoresHtml;
+      } else {
+        finalResults.innerHTML = `
+          <h3>🎉 Game Complete!</h3>
+          <p>Thanks for playing! Great game everyone!</p>
+        `;
+      }
+    }
+
+    function setupSocketListeners() {
+      if (!socket) return;
+
+      socket.on('playerListUpdate', (players) => {
+        playerList.innerHTML = '';
+        players.forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          playerList.appendChild(li);
+        });
+      });
+
+      socket.on('playerGameStarted', ({ game, gameId }) => {
+        console.log('Player received playerGameStarted:', game, gameId);
+        try {
+          showGame(game, gameId, 'player');
+        } catch (error) {
+          console.error('Error in showGame:', error);
+        }
+      });
+
+    socket.on('lobbyClosed', () => {
+      alert('Lobby was closed by host.');
+      window.location.reload();
+    });
+
+    // Game end screen events
+    socket.on('gameEnded', (data) => {
+      console.log('Game ended:', data);
+      showGameEndScreen(data);
+    });
+
+    // Game end screen button handlers
+    document.getElementById('playAgainBtn').onclick = () => {
+      // Return to lobby to select another game
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+    document.getElementById('returnToLobbyBtn').onclick = () => {
+      // Return to lobby
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+      // Exit lobby button
+      document.getElementById('exitLobby').onclick = () => {
+        if (confirm('Are you sure you want to exit the lobby?')) {
+          // Leave the lobby properly
+          socket.emit('leaveLobby', { code: currentLobbyCode });
+          // Return to homepage
+          window.location.reload();
+        }
+      };
+    }
+
+    const authView = document.getElementById('authView');
+    const homeView = document.getElementById('homeView');
+    const lobbyView = document.getElementById('lobbyView');
+    const gameView = document.getElementById('gameView');
+    const gameEndView = document.getElementById('gameEndView');
+    const codeDisplay = document.getElementById('codeDisplay');
+    const playerList = document.getElementById('playerList');
+    const gameList = document.getElementById('gameList');
+    const gameName = document.getElementById('gameName');
+    const roleDisplay = document.getElementById('roleDisplay');
+    const userDisplayName = document.getElementById('userDisplayName');
+    const finalResults = document.getElementById('finalResults');
+
+    let currentUser = null;
+
+    // Check authentication status on page load
+    checkAuthStatus();
+
+    // Authentication functions
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          showAuthView();
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        showAuthView();
+      }
+    }
+
+    function showAuthView() {
+      authView.style.display = 'block';
+      homeView.style.display = 'none';
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+    }
+
+    function showHomeView() {
+      authView.style.display = 'none';
+      homeView.style.display = 'block';
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      userDisplayName.textContent = currentUser.username;
+      loadGameStore();
+    }
+
+    // Login function
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed');
+      }
+    }
+
+    // Register function
+    async function register() {
+      const username = document.getElementById('registerUsername').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+
+      if (!username || !email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed');
+      }
+    }
+
+    // Logout function
+    async function logout() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = null;
+          showAuthView();
+          // Disconnect from socket
+          socket.disconnect();
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+
+    // Game store functions
+    async function loadGameStore() {
+      try {
+        const response = await fetch('/api/games/store');
+        const data = await response.json();
+
+        if (data.success) {
+          renderGameStore(data.games, data.userCoins);
+        }
+      } catch (error) {
+        console.error('Failed to load game store:', error);
+      }
+    }
+
+    function renderGameStore(games, userCoins) {
+      const storeGamesEl = document.getElementById('storeGames');
+      const userCoinsEl = document.getElementById('userCoins');
+      
+      userCoinsEl.textContent = userCoins;
+
+      storeGamesEl.innerHTML = '';
+      
+      games.forEach(game => {
+        const gameEl = document.createElement('div');
+        gameEl.className = 'game-option';
+        gameEl.style.margin = '10px 0';
+        
+        const ownedText = game.owned ? '✅ Owned' : '';
+        const freeText = game.free ? '🆓 Free' : '';
+        const canAfford = game.canAfford ? '' : '❌ Not enough coins';
+        const priceText = game.accessible ? '' : `💰 ${game.price} coins`;
+        
+        gameEl.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>${game.name}</strong>
+              <div style="font-size: 0.9em; opacity: 0.8;">${game.description}</div>
+              <div style="font-size: 0.8em; color: #666;">
+                👥 ${game.minPlayers}-${game.maxPlayers} players
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div>${ownedText || freeText || priceText}</div>
+              <div style="color: #dc3545; font-size: 0.8em;">${canAfford}</div>
+              ${!game.accessible && game.canAfford ? 
+                `<button onclick="purchaseGame('${game.id}')" style="background: #28a745; padding: 5px 10px; font-size: 0.8em;">Buy</button>` : 
+                ''
+              }
+            </div>
+          </div>
+        `;
+        
+        storeGamesEl.appendChild(gameEl);
+      });
+    }
+
+    async function purchaseGame(gameId) {
+      try {
+        const response = await fetch(`/api/games/purchase/${gameId}`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Game purchased successfully!');
+          // Update user coins
+          currentUser.coins = data.user.coins;
+          // Reload game store
+          loadGameStore();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Failed to purchase game:', error);
+        alert('Failed to purchase game');
+      }
+    }
+
+    // Authentication event listeners
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('registerBtn').onclick = register;
+    document.getElementById('logoutBtn').onclick = logout;
+    
+    // Quick host buttons (no account needed)
+    document.getElementById('quickHostBtn').onclick = () => {
+      window.open('/host.html', '_blank');
+    };
+    document.getElementById('quickHostBtn2').onclick = () => {
+      window.open('/host.html', '_blank');
+    };
+    
+    document.getElementById('showRegister').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+    };
+    
+    document.getElementById('showLogin').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('loginForm').style.display = 'block';
+    };
+
+    // Enter key handlers for forms
+    document.getElementById('loginPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') login();
+    };
+    
+    document.getElementById('registerPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') register();
+    };
+
+    document.getElementById('createLobby').onclick = () => {
+      // Redirect to host screen
+      window.open('/host.html', '_blank');
+    };
+
+    document.getElementById('joinAsPlayer').onclick = () => {
+      const joinSection = document.getElementById('joinSection');
+      joinSection.style.display = joinSection.style.display === 'none' ? 'block' : 'none';
+  };
+
+
+    document.getElementById('joinLobby').onclick = () => {
+      const code = document.getElementById('lobbyCode').value.trim().toUpperCase();
+      if (!code) return alert('Enter lobby code!');
+      
+      // Create socket connection when joining lobby
+      socket = io('/lobby');
+      
+      // Make socket available to iframes
+      window.socket = socket;
+      
+      // Set up socket event listeners
+      setupSocketListeners();
+      
+      const username = currentUser ? currentUser.username : "GUEST";
+      const userId = currentUser ? currentUser.id : null;
+      socket.emit('joinLobby', { code, username, userId }, (res) => {
+        if (res?.error) return alert(res.error);
+        
+        currentLobbyCode = res.code;
+        myName = res.username;
+        showLobby(res.code, res.games);
+      });
+    };
+
+
+    // Exit lobby button
+    document.getElementById('exitLobby').onclick = () => {
+      if (confirm('Are you sure you want to exit the lobby?')) {
+        // Leave the lobby properly
+        socket.emit('leaveLobby', { code: currentLobbyCode });
+        // Return to homepage
+        window.location.reload();
+      }
+    };
+
+    function showLobby(code, games) {
+      homeView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      codeDisplay.textContent = code;
+      renderGameList(games);
+    }
+
+    function renderGameList(games) {
+      gameList.innerHTML = '';
+      games.forEach(game => {
+        const div = document.createElement('div');
+        div.className = 'game-option';
+        
+        const gameHtml = `
+          <div style="font-size: 1.2em; font-weight: bold;">${game.name}</div>
+          <div class="game-info">${game.description || 'Fun party game!'}</div>
+          <div class="game-players">👥 ${game.minPlayers}-${game.maxPlayers} players</div>
+        `;
+        
+        div.innerHTML = gameHtml;
+        div.onclick = () => {
+          socket.emit('selectGame', { code: currentLobbyCode, gameId: game.id });
+        };
+        gameList.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>

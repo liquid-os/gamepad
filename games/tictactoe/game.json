@@ -1,0 +1,11 @@
+{
+    "id": "tictactoe",
+    "name": "Tic Tac Toe",
+    "version": "1.0.0",
+    "author": "System",
+    "minPlayers": 2,
+    "maxPlayers": 2,
+    "entryServer": "server.js",
+    "entryClient": "client/index.html"
+  }
+  

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    h1 {
+      transition: opacity 0.3s ease;
+    }
+
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: sans-serif;
+      background: #1a1a1a;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      touch-action: none; /* Disable double-tap zoom in Safari */
+    }
+
+    .controller {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-around;
+      max-width: 90%;
+      max-height: 90%;
+      flex-wrap: wrap;
+    }
+
+    .section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 40px;
+    }
+
+    .dpad, .buttons {
+      display: grid;
+      gap: 10px;
+    }
+
+    .dpad {
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px 60px;
+    }
+
+    .dpad button {
+      width: 60px;
+      height: 60px;
+      background: #333;
+      color: white;
+      font-size: 24px;
+      border: 2px solid #888;
+      border-radius: 8px;
+    }
+
+    .joystick-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      background: #222;
+      border-radius: 50%;
+      border: 2px solid #555;
+      touch-action: none;
+    }
+
+    .joystick {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      background: #888;
+      border-radius: 50%;
+      top: 40px;
+      left: 40px;
+      touch-action: none;
+    }
+
+    .buttons {
+      grid-template-areas: 
+        ".    Y    ."
+        "X    .    B"
+        ".    A    .";
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px 60px;
+    }
+
+    .buttons button {
+      width: 60px;
+      height: 60px;
+      background: #444;
+      color: white;
+      font-size: 22px;
+      border-radius: 50%;
+      border: 2px solid #aaa;
+    }
+
+    .btn-X { grid-area: X; }
+    .btn-Y { grid-area: Y; }
+    .btn-B { grid-area: B; }
+    .btn-A { grid-area: A; }
+
+    .popup, .choice-popup {
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -30%);
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .popup input {
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+    }
+
+    .choice-popup button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      z-index: 5;
+    }
+
+    .utility-buttons {
+      position: absolute;
+      bottom: 10px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .utility-buttons button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Game Controller</h1>
+  
+  <div class="controller">
+    <div class="section">
+      <div class="joystick-container" id="joystick-container">
+        <div class="joystick" id="joystick"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="dpad">
+        <div></div>
+        <button data-dir="up">↑</button>
+        <div></div>
+        <button data-dir="left">←</button>
+        <div></div>
+        <button data-dir="right">→</button>
+        <div></div>
+        <button data-dir="down">↓</button>
+        <div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="buttons">
+        <button class="btn-Y" data-btn="Y">Y</button>
+        <button class="btn-X" data-btn="X">X</button>
+        <button class="btn-B" data-btn="B">B</button>
+        <button class="btn-A" data-btn="A">A</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="utility-buttons">
+    <button onclick="showInputPopup()">Input</button>
+    <button onclick="showChoicePopup(['Attack', 'Defend', 'Run'])">Choices</button>
+  </div>
+
+  <div class="overlay" id="overlay"></div>
+
+  <div class="popup" id="input-popup">
+    <input type="text" id="input-field" placeholder="Type here..." />
+    <button onclick="submitInput()">Submit</button>
+  </div>
+
+  <div class="choice-popup" id="choice-popup"></div>
+
+  <script>
+    // D-pad
+    document.querySelectorAll('.dpad button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        console.log('D-pad:', btn.dataset.dir);
+        vibrate();
+      });
+    });
+
+    // Face buttons
+    document.querySelectorAll('.buttons button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        console.log('Button pressed:', btn.dataset.btn);
+        vibrate();
+      });
+    });
+
+    // Joystick logic
+    const joystick = document.getElementById('joystick');
+    const container = document.getElementById('joystick-container');
+
+    let dragging = false;
+
+    function moveJoystick(x, y) {
+      const max = 50;
+      const dx = x - 75;
+      const dy = y - 75;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      let newX = 50;
+      let newY = 50;
+
+      if (dist > max) {
+        newX = 50 + (dx / dist) * max;
+        newY = 50 + (dy / dist) * max;
+      } else {
+        newX = dx + 50;
+        newY = dy + 50;
+      }
+
+      joystick.style.left = `${newX}px`;
+      joystick.style.top = `${newY}px`;
+
+      console.log('Joystick move:', { dx, dy });
+    }
+
+    function resetJoystick() {
+      joystick.style.left = '40px';
+      joystick.style.top = '40px';
+      console.log('Joystick released');
+    }
+
+    // Mouse Events
+    joystick.addEventListener('mousedown', (e) => {
+      dragging = true;
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (dragging) resetJoystick();
+      dragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const rect = container.getBoundingClientRect();
+      moveJoystick(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    // Touch Events
+    joystick.addEventListener('touchstart', (e) => {
+      dragging = true;
+      e.preventDefault();
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => {
+      if (dragging) resetJoystick();
+      dragging = false;
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      const rect = container.getBoundingClientRect();
+      const touch = e.touches[0];
+      moveJoystick(touch.clientX - rect.left, touch.clientY - rect.top);
+    }, { passive: false });
+
+    // Vibrate function
+    function vibrate() {
+      if (navigator.vibrate) {
+        navigator.vibrate(100); // Vibrates for 100ms
+      }
+    }
+
+    // Input Popup
+    function showInputPopup() {
+      document.getElementById('overlay').style.display = 'block';
+      document.getElementById('input-popup').style.display = 'flex';
+    }
+
+    function submitInput() {
+      const value = document.getElementById('input-field').value;
+      console.log('Input submitted:', value);
+      document.getElementById('input-popup').style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    // Choice Popup
+    function showChoicePopup(choices) {
+      const choicePopup = document.getElementById('choice-popup');
+      choicePopup.innerHTML = choices.map(choice => `<button onclick="chooseOption('${choice}')">${choice}</button>`).join('');
+      document.getElementById('overlay').style.display = 'block';
+      choicePopup.style.display = 'flex';
+    }
+
+    function chooseOption(choice) {
+      console.log('Choice made:', choice);
+      document.getElementById('choice-popup').style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

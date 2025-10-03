@@ -1,0 +1,25 @@
+{
+  "name": "gamepad",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "populate-games": "node scripts/populateGames.js",
+    "grant-free-games": "node scripts/grantFreeGames.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "mongoose": "^8.0.3",
+    "bcryptjs": "^2.4.3",
+    "express-session": "^1.17.3",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.3.1"
+  }
+}
