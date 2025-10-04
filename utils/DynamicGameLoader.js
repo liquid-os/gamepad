@@ -26,13 +26,66 @@ class DynamicGameLoader {
 
   async loadAllGames() {
     try {
+      // Load games from database first
       const approvedGames = await Game.getApprovedGames();
       
       for (const gameData of approvedGames) {
         await this.loadGame(gameData);
       }
+      
+      // Also load existing games from file system as fallback
+      await this.loadFileSystemGames();
     } catch (error) {
       console.error('[DynamicLoader] Failed to load games from database:', error);
+      // Fallback to file system only
+      await this.loadFileSystemGames();
+    }
+  }
+
+  async loadFileSystemGames() {
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      
+      const gamesDir = path.join(__dirname, '..', 'games');
+      if (!fs.existsSync(gamesDir)) {
+        console.log('[DynamicLoader] Games directory not found');
+        return;
+      }
+
+      const folders = fs.readdirSync(gamesDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
+
+      for (const id of folders) {
+        // Skip if already loaded from database
+        if (this.games.has(id)) {
+          continue;
+        }
+        
+        const serverPath = path.join(gamesDir, id, 'server.js');
+        if (!fs.existsSync(serverPath)) continue;
+
+        try {
+          // Create a mock game data object for file system games
+          const gameData = {
+            id: id,
+            name: id.charAt(0).toUpperCase() + id.slice(1),
+            description: `The classic ${id} game`,
+            minPlayers: 2,
+            maxPlayers: 8,
+            category: 'strategy',
+            price: 0,
+            serverCode: null // Will trigger file system loading
+          };
+          
+          await this.loadGame(gameData);
+        } catch (err) {
+          console.error(`[DynamicLoader] Failed to load ${id} from file system:`, err);
+        }
+      }
+    } catch (error) {
+      console.error('[DynamicLoader] Failed to load file system games:', error);
     }
   }
 

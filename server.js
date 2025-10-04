@@ -347,7 +347,7 @@ io.of('/lobby').on('connection', socket => {
 
     // If game is already selected, initialize player for that game
     if (lobby.gameId) {
-      const game = games.get(lobby.gameId);
+      const game = gameLoader.getGame(lobby.gameId);
       if (game) {
         const api = makeApi(io.of('/lobby'), lobby);
         game.onPlayerJoin(lobby, api, player);
