@@ -520,6 +520,7 @@
         <button id="createLobby" style="flex: 1;">📺 Host Game (TV Screen)</button>
         <button id="joinAsPlayer" style="flex: 1; background: #28a745;">📱 Join as Player</button>
         <button id="storeBtn" style="flex: 1; background: #6f42c1; color: white;">🛒 Game Store</button>
+        <button id="creatorBtn" style="flex: 1; background: #fd7e14; color: white;">🎮 Creator Dashboard</button>
       </div>
       
       <div id="joinSection" style="display: none;">
@@ -650,6 +651,64 @@
     function setupSocketListeners() {
       if (!socket) return;
 
+      // Set up heartbeat/ping-pong mechanism
+      setInterval(() => {
+        if (socket && socket.connected) {
+          socket.emit('ping');
+        }
+      }, 30000); // Ping every 30 seconds
+
+      socket.on('pong', () => {
+        // Connection is alive
+        console.log('[Reconnection] Connection heartbeat received');
+      });
+
+      // Handle connection state changes
+      socket.on('connect', () => {
+        console.log('[Reconnection] Connected to server');
+        
+        // If we have a previous session, try to reconnect
+        if (currentLobbyCode && currentUser) {
+          console.log('[Reconnection] Attempting to reconnect to lobby:', currentLobbyCode);
+          attemptReconnection();
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[Reconnection] Disconnected from server');
+        showReconnectionStatus('Disconnected. Attempting to reconnect...');
+      });
+
+      socket.on('reconnect', () => {
+        console.log('[Reconnection] Reconnected to server');
+        hideReconnectionStatus();
+        
+        // Try to reconnect to lobby if we were in one
+        if (currentLobbyCode && currentUser) {
+          attemptReconnection();
+        }
+      });
+
+      // Handle player disconnection notifications
+      socket.on('playerDisconnected', (data) => {
+        console.log('[Reconnection] Player disconnected:', data);
+        if (data.temporary) {
+          showPlayerStatus(`${data.player.username} disconnected (reconnecting...)`, 'warning');
+        } else {
+          showPlayerStatus(`${data.player.username} left the lobby`, 'info');
+        }
+      });
+
+      socket.on('playerReconnected', (data) => {
+        console.log('[Reconnection] Player reconnected:', data);
+        showPlayerStatus(`${data.player.username} has reconnected`, 'success');
+      });
+
+      socket.on('playerPermanentlyDisconnected', (data) => {
+        console.log('[Reconnection] Player permanently disconnected:', data);
+        showPlayerStatus(`${data.player.username} has left the game`, 'error');
+      });
+
       socket.on('playerListUpdate', (players) => {
         playerList.innerHTML = '';
         players.forEach(name => {
@@ -705,6 +764,148 @@
       };
     }
 
+    // Reconnection helper functions
+    function attemptReconnection() {
+      if (!currentLobbyCode || !currentUser) return;
+      
+      console.log('[Reconnection] Attempting to reconnect to lobby:', currentLobbyCode);
+      
+      socket.emit('reconnect', {
+        playerId: currentUser.id,
+        lobbyCode: currentLobbyCode
+      }, (response) => {
+        if (response?.success) {
+          console.log('[Reconnection] Successfully reconnected to lobby');
+          hideReconnectionStatus();
+          showPlayerStatus('Reconnected successfully!', 'success');
+          
+          // Update lobby state
+          currentLobbyCode = response.lobbyCode;
+          myName = response.player.username;
+          
+          // If we're in a game, the server will handle game state restoration
+          if (response.gameId) {
+            console.log('[Reconnection] Restoring game state for:', response.gameId);
+          }
+        } else {
+          console.log('[Reconnection] Failed to reconnect:', response?.error);
+          showReconnectionStatus(`Reconnection failed: ${response?.error || 'Unknown error'}`);
+          
+          // After 10 seconds, redirect to home
+          setTimeout(() => {
+            window.location.reload();
+          }, 10000);
+        }
+      });
+    }
+
+    function showReconnectionStatus(message) {
+      // Create or update reconnection status element
+      let statusEl = document.getElementById('reconnectionStatus');
+      if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'reconnectionStatus';
+        statusEl.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background: #ffc107;
+          color: #000;
+          padding: 10px;
+          text-align: center;
+          z-index: 10000;
+          font-weight: bold;
+        `;
+        document.body.appendChild(statusEl);
+      }
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+    }
+
+    function hideReconnectionStatus() {
+      const statusEl = document.getElementById('reconnectionStatus');
+      if (statusEl) {
+        statusEl.style.display = 'none';
+      }
+    }
+
+    function showPlayerStatus(message, type = 'info') {
+      // Create a temporary status message
+      const statusEl = document.createElement('div');
+      const colors = {
+        info: '#007bff',
+        success: '#28a745',
+        warning: '#ffc107',
+        error: '#dc3545'
+      };
+      
+      statusEl.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 20px;
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      `;
+      statusEl.textContent = message;
+      
+      document.body.appendChild(statusEl);
+      
+      // Remove after 3 seconds
+      setTimeout(() => {
+        if (statusEl.parentNode) {
+          statusEl.parentNode.removeChild(statusEl);
+        }
+      }, 3000);
+    }
+
+    // Store session data in localStorage for reconnection
+    function storeSessionData() {
+      if (currentLobbyCode && currentUser) {
+        localStorage.setItem('gameSession', JSON.stringify({
+          lobbyCode: currentLobbyCode,
+          userId: currentUser.id,
+          username: currentUser.username,
+          timestamp: Date.now()
+        }));
+      }
+    }
+
+    function loadSessionData() {
+      try {
+        const sessionData = localStorage.getItem('gameSession');
+        if (sessionData) {
+          const session = JSON.parse(sessionData);
+          // Check if session is not too old (1 hour)
+          if (Date.now() - session.timestamp < 3600000) {
+            return session;
+          }
+        }
+      } catch (error) {
+        console.error('[Reconnection] Error loading session data:', error);
+      }
+      return null;
+    }
+
+    function clearSessionData() {
+      localStorage.removeItem('gameSession');
+    }
+
+    // Store session data when joining lobby
+    function onJoinLobby() {
+      storeSessionData();
+    }
+
+    // Clear session data when leaving
+    function onLeaveLobby() {
+      clearSessionData();
+    }
+
     const authView = document.getElementById('authView');
     const homeView = document.getElementById('homeView');
     const lobbyView = document.getElementById('lobbyView');
@@ -723,6 +924,20 @@
 
     // Check authentication status on page load
     checkAuthStatus();
+    
+    // Check for stored session and attempt reconnection
+    window.addEventListener('load', () => {
+      const sessionData = loadSessionData();
+      if (sessionData && currentUser && currentUser.id === sessionData.userId) {
+        console.log('[Reconnection] Found stored session, attempting reconnection');
+        // Attempt to reconnect after a short delay to ensure socket is ready
+        setTimeout(() => {
+          if (socket && socket.connected) {
+            attemptReconnection();
+          }
+        }, 1000);
+      }
+    });
 
     // Authentication functions
     async function checkAuthStatus() {
@@ -944,6 +1159,11 @@
       window.location.href = '/store.html';
     };
 
+    // Creator dashboard button
+    document.getElementById('creatorBtn').onclick = () => {
+      window.location.href = '/creator';
+    };
+
     // Authentication event listeners
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('registerBtn').onclick = register;
@@ -1010,6 +1230,9 @@
         currentLobbyCode = res.code;
         myName = res.username;
         showLobby(res.code, res.games);
+        
+        // Store session data for reconnection
+        onJoinLobby();
       });
     };
 
@@ -1019,6 +1242,8 @@
       if (confirm('Are you sure you want to exit the lobby?')) {
         // Leave the lobby properly
         socket.emit('leaveLobby', { code: currentLobbyCode });
+        // Clear session data
+        onLeaveLobby();
         // Return to homepage
         window.location.reload();
       }

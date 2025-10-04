@@ -388,6 +388,160 @@
       margin: 20px 0;
       text-align: center;
     }
+
+    /* Search and Filter Controls */
+    .search-controls {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+
+    .search-bar input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .search-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+
+    .search-btn:hover {
+      background: #0056b3;
+    }
+
+    .filter-controls {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-group label {
+      font-weight: 600;
+      color: #333;
+      font-size: 0.9em;
+    }
+
+    .filter-group select {
+      padding: 8px 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .filter-group select:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    /* Rating Stars */
+    .rating-display {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin: 5px 0;
+    }
+
+    .stars {
+      display: flex;
+      gap: 2px;
+    }
+
+    .star {
+      color: #ffc107;
+      font-size: 1.1em;
+    }
+
+    .star.empty {
+      color: #e9ecef;
+    }
+
+    .rating-text {
+      font-size: 0.9em;
+      color: #666;
+      margin-left: 5px;
+    }
+
+    .rating-section {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .rating-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .rating-stars {
+      display: flex;
+      gap: 5px;
+    }
+
+    .rating-star {
+      font-size: 1.5em;
+      color: #e9ecef;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .rating-star:hover,
+    .rating-star.active {
+      color: #ffc107;
+    }
+
+    .rating-submit {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+
+    .rating-submit:hover {
+      background: #218838;
+    }
+
+    .rating-submit:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -400,6 +554,34 @@
     <div class="user-info">
       <a href="/" class="back-btn">← Back to Home</a>
       <div class="user-coins">💰 <span id="userCoins">0</span> coins</div>
+    </div>
+
+    <!-- Search and Filter Controls -->
+    <div class="search-controls">
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Search games..." />
+        <button onclick="performSearch()" class="search-btn">Search</button>
+      </div>
+      
+      <div class="filter-controls">
+        <div class="filter-group">
+          <label for="categoryFilter">Category:</label>
+          <select id="categoryFilter" onchange="performSearch()">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="sortBy">Sort by:</label>
+          <select id="sortBy" onchange="performSearch()">
+            <option value="averageRating">Rating (High to Low)</option>
+            <option value="newest">Newest First</option>
+            <option value="price_low">Price (Low to High)</option>
+            <option value="price_high">Price (High to Low)</option>
+            <option value="name">Name (A to Z)</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div id="storeContent">
@@ -424,12 +606,25 @@
     let currentImageIndex = 0;
     let currentUser = null;
     let currentStoreGames = [];
+    let currentCategories = [];
 
     // Check authentication status on page load
     checkAuthStatus();
     
     // Handle payment success/cancel
     handlePaymentResult();
+    
+    // Add search input event listener
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            performSearch();
+          }
+        });
+      }
+    });
 
     async function checkAuthStatus() {
       try {
@@ -450,7 +645,50 @@
 
     async function loadGameStore() {
       try {
-        const response = await fetch('/api/games/store');
+        // Load categories first
+        await loadCategories();
+        
+        // Load games with current search/filter parameters
+        await performSearch();
+      } catch (error) {
+        console.error('Failed to load game store:', error);
+        showError('Failed to load games');
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        const response = await fetch('/api/games/categories');
+        const data = await response.json();
+
+        if (data.success) {
+          currentCategories = data.categories;
+          const categoryFilter = document.getElementById('categoryFilter');
+          categoryFilter.innerHTML = currentCategories.map(cat => 
+            `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`
+          ).join('');
+        }
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    }
+
+    async function performSearch() {
+      try {
+        const searchInput = document.getElementById('searchInput');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const sortBy = document.getElementById('sortBy');
+        
+        const search = searchInput.value.trim();
+        const category = categoryFilter.value;
+        const sort = sortBy.value;
+        
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (category && category !== 'all') params.append('category', category);
+        if (sort) params.append('sortBy', sort);
+        
+        const response = await fetch(`/api/games/store?${params.toString()}`);
         const data = await response.json();
 
         if (data.success) {
@@ -460,8 +698,8 @@
           showError('Failed to load games');
         }
       } catch (error) {
-        console.error('Failed to load game store:', error);
-        showError('Failed to load games');
+        console.error('Failed to search games:', error);
+        showError('Failed to search games');
       }
     }
 
@@ -495,6 +733,12 @@
       // Calculate real money price (example: 1 coin = $0.01)
       const realMoneyPrice = (game.price * 0.01).toFixed(2);
       
+      // Render rating stars
+      const ratingStars = renderStars(game.averageRating || 0);
+      const ratingText = game.totalRatings > 0 ? 
+        `${game.averageRating.toFixed(1)} (${game.totalRatings} review${game.totalRatings !== 1 ? 's' : ''})` : 
+        'No ratings yet';
+      
       return `
         <div class="game-card">
           <div class="game-card-content">
@@ -514,6 +758,13 @@
                 </div>
               </div>
               <p class="game-description">${game.description}</p>
+              
+              <!-- Rating Display -->
+              <div class="rating-display">
+                <div class="stars">${ratingStars}</div>
+                <span class="rating-text">${ratingText}</span>
+              </div>
+              
               <div class="game-details">
                 <span class="player-count">👥 ${game.minPlayers}-${game.maxPlayers} players</span>
                 <span class="game-category">🏷️ ${game.category || 'strategy'}</span>
@@ -522,6 +773,21 @@
                 <span class="coin-price">💰 ${game.price} coins</span>
                 <span class="money-price">💳 $${realMoneyPrice}</span>
               </div>
+              
+              <!-- Rating Section (only show if user owns the game) -->
+              ${game.accessible ? `
+                <div class="rating-section">
+                  <div class="rating-input">
+                    <div class="rating-stars" id="ratingStars-${game.id}">
+                      ${renderRatingInput(game.id)}
+                    </div>
+                    <button onclick="submitRating('${game.id}')" class="rating-submit" id="ratingSubmit-${game.id}" disabled>
+                      Rate Game
+                    </button>
+                  </div>
+                </div>
+              ` : ''}
+              
               <div class="game-actions">
                 ${!game.accessible && game.canAfford ? 
                   `<button onclick="purchaseWithCoins('${game.id}')" class="purchase-btn">Buy with Coins</button>
@@ -536,6 +802,81 @@
           </div>
         </div>
       `;
+    }
+
+    function renderStars(rating) {
+      const fullStars = Math.floor(rating);
+      const hasHalfStar = rating % 1 >= 0.5;
+      const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+      
+      let stars = '';
+      for (let i = 0; i < fullStars; i++) {
+        stars += '<span class="star">★</span>';
+      }
+      if (hasHalfStar) {
+        stars += '<span class="star">☆</span>';
+      }
+      for (let i = 0; i < emptyStars; i++) {
+        stars += '<span class="star empty">★</span>';
+      }
+      return stars;
+    }
+
+    function renderRatingInput(gameId) {
+      let stars = '';
+      for (let i = 1; i <= 5; i++) {
+        stars += `<span class="rating-star" data-rating="${i}" onclick="setRating('${gameId}', ${i})">★</span>`;
+      }
+      return stars;
+    }
+
+    function setRating(gameId, rating) {
+      const stars = document.querySelectorAll(`#ratingStars-${gameId} .rating-star`);
+      const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
+      
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+      
+      submitBtn.disabled = false;
+      submitBtn.dataset.rating = rating;
+    }
+
+    async function submitRating(gameId) {
+      const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
+      const rating = parseInt(submitBtn.dataset.rating);
+      
+      if (!rating || rating < 1 || rating > 5) {
+        alert('Please select a rating');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/games/rate/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ rating })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Rating submitted successfully!');
+          // Refresh the game store to show updated ratings
+          await performSearch();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Rating error:', error);
+        alert('Failed to submit rating');
+      }
     }
 
     async function purchaseWithCoins(gameId) {

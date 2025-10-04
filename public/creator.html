@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Creator Dashboard - Party Game Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    .header p {
+      color: #666;
+      font-size: 1.1em;
+    }
+    
+    .nav-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: white;
+      border-radius: 15px;
+      padding: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .nav-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    .nav-btn.active {
+      background: #007bff;
+      color: white;
+    }
+    
+    .nav-btn:hover:not(.active) {
+      background: #f8f9fa;
+    }
+    
+    .content-section {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+    
+    .upload-area {
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: all 0.3s;
+    }
+    
+    .upload-area.dragover {
+      border-color: #28a745;
+      background-color: #f8f9fa;
+    }
+    
+    .upload-area input[type="file"] {
+      display: none;
+    }
+    
+    .upload-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 10px;
+    }
+    
+    .upload-btn:hover {
+      background: #0056b3;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+    
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .game-card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    
+    .game-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .game-status {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+    
+    .status-pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+    
+    .status-approved {
+      background: #d4edda;
+      color: #155724;
+    }
+    
+    .status-rejected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    
+    .game-stats {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      font-size: 0.9em;
+      color: #666;
+    }
+    
+    .game-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 50px;
+      color: white;
+      font-size: 1.2em;
+    }
+    
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .success {
+      background: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    
+    .creator-info {
+      background: #e9ecef;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .become-creator-form {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    @media (max-width: 768px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎮 Creator Dashboard</h1>
+      <p>Upload and manage your party games</p>
+    </div>
+
+    <div class="nav-bar">
+      <button class="nav-btn active" onclick="showSection('overview')">📊 Overview</button>
+      <button class="nav-btn" onclick="showSection('upload')">⬆️ Upload Game</button>
+      <button class="nav-btn" onclick="showSection('games')">🎯 My Games</button>
+      <button class="nav-btn" onclick="showSection('profile')">👤 Profile</button>
+    </div>
+
+    <!-- Overview Section -->
+    <div id="overview-section" class="content-section">
+      <h2>Creator Overview</h2>
+      
+      <div id="creator-info" class="creator-info">
+        <p>Loading creator information...</p>
+      </div>
+      
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-games">-</div>
+          <div class="stat-label">Total Games</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="approved-games">-</div>
+          <div class="stat-label">Approved</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-downloads">-</div>
+          <div class="stat-label">Downloads</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-revenue">-</div>
+          <div class="stat-label">Revenue</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div id="upload-section" class="content-section hidden">
+      <h2>Upload New Game</h2>
+      
+      <div class="upload-area" id="upload-area">
+        <p>📁 Drag and drop your game ZIP file here, or click to browse</p>
+        <input type="file" id="game-file" accept=".zip" />
+        <button class="upload-btn" onclick="document.getElementById('game-file').click()">
+          Choose ZIP File
+        </button>
+        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+          Maximum file size: 10MB
+        </p>
+      </div>
+      
+      <form id="game-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="game-name">Game Name *</label>
+            <input type="text" id="game-name" name="name" required />
+          </div>
+          <div class="form-group">
+            <label for="game-category">Category</label>
+            <select id="game-category" name="category">
+              <option value="strategy">Strategy</option>
+              <option value="trivia">Trivia</option>
+              <option value="word">Word</option>
+              <option value="action">Action</option>
+              <option value="puzzle">Puzzle</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="game-description">Description *</label>
+          <textarea id="game-description" name="description" required placeholder="Describe your game..."></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="game-price">Price (coins)</label>
+            <input type="number" id="game-price" name="price" min="0" value="0" />
+          </div>
+          <div class="form-group">
+            <label for="game-players">Players (min-max)</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="number" id="game-min-players" name="minPlayers" min="1" max="20" value="2" />
+              <input type="number" id="game-max-players" name="maxPlayers" min="1" max="20" value="8" />
+            </div>
+          </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">
+          Upload Game
+        </button>
+      </form>
+    </div>
+
+    <!-- My Games Section -->
+    <div id="games-section" class="content-section hidden">
+      <h2>My Games</h2>
+      <div id="games-list">
+        <div class="loading">Loading games...</div>
+      </div>
+    </div>
+
+    <!-- Profile Section -->
+    <div id="profile-section" class="content-section hidden">
+      <h2>Creator Profile</h2>
+      <div id="profile-content">
+        <div class="loading">Loading profile...</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let currentSection = 'overview';
+
+    // Check authentication and load data
+    checkAuthStatus();
+
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+          
+          if (currentUser.role === 'creator' || currentUser.role === 'admin') {
+            loadCreatorData();
+          } else {
+            showBecomeCreatorForm();
+          }
+        } else {
+          showError('Please log in to access the creator dashboard');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        showError('Please log in to access the creator dashboard');
+      }
+    }
+
+    async function loadCreatorData() {
+      await Promise.all([
+        loadCreatorStats(),
+        loadMyGames()
+      ]);
+    }
+
+    async function loadCreatorStats() {
+      try {
+        const response = await fetch('/api/creator/stats');
+        const data = await response.json();
+
+        if (data.success) {
+          const stats = data.stats;
+          document.getElementById('total-games').textContent = stats.totalGames;
+          document.getElementById('approved-games').textContent = stats.approvedGames;
+          document.getElementById('total-downloads').textContent = stats.totalDownloads;
+          document.getElementById('total-revenue').textContent = `$${(stats.totalRevenue / 100).toFixed(2)}`;
+        }
+      } catch (error) {
+        console.error('Failed to load creator stats:', error);
+      }
+    }
+
+    async function loadMyGames() {
+      try {
+        const response = await fetch('/api/creator/my-games');
+        const data = await response.json();
+
+        if (data.success) {
+          renderMyGames(data.games);
+        }
+      } catch (error) {
+        console.error('Failed to load games:', error);
+      }
+    }
+
+    function renderMyGames(games) {
+      const gamesList = document.getElementById('games-list');
+      
+      if (games.length === 0) {
+        gamesList.innerHTML = '<p style="text-align: center; color: #666;">No games uploaded yet.</p>';
+        return;
+      }
+
+      gamesList.innerHTML = `
+        <div class="games-grid">
+          ${games.map(game => renderGameCard(game)).join('')}
+        </div>
+      `;
+    }
+
+    function renderGameCard(game) {
+      const statusClass = `status-${game.status}`;
+      const statusText = game.status.charAt(0).toUpperCase() + game.status.slice(1);
+      
+      return `
+        <div class="game-card">
+          <div class="game-header">
+            <div class="game-title">${game.name}</div>
+            <div class="game-status ${statusClass}">${statusText}</div>
+          </div>
+          <p style="color: #666; margin: 10px 0;">${game.description}</p>
+          <div class="game-stats">
+            <span>💰 ${game.price} coins</span>
+            <span>👥 ${game.minPlayers}-${game.maxPlayers}</span>
+            <span>📊 ${game.downloadCount} downloads</span>
+          </div>
+          <div class="game-actions">
+            <button class="btn btn-primary" onclick="editGame('${game.id}')">Edit</button>
+            <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function showSection(section) {
+      // Hide all sections
+      document.querySelectorAll('[id$="-section"]').forEach(el => {
+        el.classList.add('hidden');
+      });
+      
+      // Remove active class from all nav buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Show selected section
+      document.getElementById(`${section}-section`).classList.remove('hidden');
+      
+      // Add active class to clicked button
+      event.target.classList.add('active');
+      
+      currentSection = section;
+      
+      // Load section-specific data
+      if (section === 'games') {
+        loadMyGames();
+      } else if (section === 'profile') {
+        loadProfile();
+      }
+    }
+
+    async function loadProfile() {
+      const profileContent = document.getElementById('profile-content');
+      
+      if (currentUser.role === 'creator' || currentUser.role === 'admin') {
+        const profile = currentUser.creatorProfile;
+        
+        profileContent.innerHTML = `
+          <div class="creator-info">
+            <h3>Creator Information</h3>
+            <p><strong>Studio:</strong> ${profile.studioName || 'Not set'}</p>
+            <p><strong>Bio:</strong> ${profile.bio || 'Not set'}</p>
+            <p><strong>Website:</strong> ${profile.website ? `<a href="${profile.website}" target="_blank">${profile.website}</a>` : 'Not set'}</p>
+            <p><strong>Payout Email:</strong> ${profile.payoutEmail || 'Not set'}</p>
+            <p><strong>Verified:</strong> ${profile.verified ? '✅ Yes' : '❌ No'}</p>
+            <p><strong>Creator Since:</strong> ${new Date(currentUser.creatorSince).toLocaleDateString()}</p>
+          </div>
+        `;
+      } else {
+        showBecomeCreatorForm();
+      }
+    }
+
+    function showBecomeCreatorForm() {
+      const profileContent = document.getElementById('profile-content');
+      
+      profileContent.innerHTML = `
+        <div class="become-creator-form">
+          <h3>Become a Creator</h3>
+          <p>Upload and publish your own party games!</p>
+          
+          <form id="become-creator-form">
+            <div class="form-group">
+              <label for="studio-name">Studio Name *</label>
+              <input type="text" id="studio-name" name="studioName" required />
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-bio">Bio</label>
+              <textarea id="creator-bio" name="bio" placeholder="Tell us about yourself..."></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-website">Website</label>
+              <input type="url" id="creator-website" name="website" placeholder="https://yourwebsite.com" />
+            </div>
+            
+            <div class="form-group">
+              <label for="payout-email">Payout Email *</label>
+              <input type="email" id="payout-email" name="payoutEmail" required placeholder="your-email@example.com" />
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              Become Creator
+            </button>
+          </form>
+        </div>
+      `;
+      
+      // Add form submit handler
+      document.getElementById('become-creator-form').onsubmit = becomeCreator;
+    }
+
+    async function becomeCreator(event) {
+      event.preventDefault();
+      
+      const formData = new FormData(event.target);
+      const data = Object.fromEntries(formData.entries());
+      
+      try {
+        const response = await fetch('/api/creator/become-creator', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Successfully became a creator!');
+          currentUser = result.user;
+          loadCreatorData();
+          showSection('overview');
+        } else {
+          showError(result.message);
+        }
+      } catch (error) {
+        console.error('Become creator error:', error);
+        showError('Failed to become creator');
+      }
+    }
+
+    // File upload handling
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('game-file');
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        updateUploadArea(files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        updateUploadArea(e.target.files[0]);
+      }
+    });
+
+    function updateUploadArea(file) {
+      const uploadArea = document.getElementById('upload-area');
+      uploadArea.innerHTML = `
+        <p>✅ <strong>${file.name}</strong> selected</p>
+        <p style="color: #666; font-size: 0.9em;">
+          Size: ${(file.size / 1024 / 1024).toFixed(2)}MB
+        </p>
+        <button class="upload-btn" onclick="document.getElementById('game-file').click()">
+          Change File
+        </button>
+      `;
+    }
+
+    // Game form submission
+    document.getElementById('game-form').onsubmit = uploadGame;
+
+    async function uploadGame(event) {
+      event.preventDefault();
+      
+      const fileInput = document.getElementById('game-file');
+      if (!fileInput.files[0]) {
+        showError('Please select a game file');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('gameFile', fileInput.files[0]);
+      
+      const gameData = {
+        name: document.getElementById('game-name').value,
+        description: document.getElementById('game-description').value,
+        price: document.getElementById('game-price').value,
+        minPlayers: document.getElementById('game-min-players').value,
+        maxPlayers: document.getElementById('game-max-players').value,
+        category: document.getElementById('game-category').value
+      };
+      
+      formData.append('gameData', JSON.stringify(gameData));
+      
+      try {
+        const response = await fetch('/api/creator/upload-game', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess(result.message);
+          document.getElementById('game-form').reset();
+          document.getElementById('upload-area').innerHTML = `
+            <p>📁 Drag and drop your game ZIP file here, or click to browse</p>
+            <input type="file" id="game-file" accept=".zip" />
+            <button class="upload-btn" onclick="document.getElementById('game-file').click()">
+              Choose ZIP File
+            </button>
+            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+              Maximum file size: 10MB
+            </p>
+          `;
+          loadCreatorData();
+        } else {
+          showError(result.message);
+          if (result.errors) {
+            console.error('Validation errors:', result.errors);
+          }
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showError('Failed to upload game');
+      }
+    }
+
+    async function editGame(gameId) {
+      // TODO: Implement game editing
+      alert('Game editing will be implemented soon!');
+    }
+
+    async function deleteGame(gameId) {
+      if (!confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/creator/game/${gameId}`, {
+          method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Game deleted successfully');
+          loadCreatorData();
+        } else {
+          showError(result.message);
+        }
+      } catch (error) {
+        console.error('Delete error:', error);
+        showError('Failed to delete game');
+      }
+    }
+
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = message;
+      
+      const container = document.querySelector('.container');
+      container.insertBefore(errorDiv, container.firstChild);
+      
+      setTimeout(() => {
+        errorDiv.remove();
+      }, 5000);
+    }
+
+    function showSuccess(message) {
+      const successDiv = document.createElement('div');
+      successDiv.className = 'success';
+      successDiv.textContent = message;
+      
+      const container = document.querySelector('.container');
+      container.insertBefore(successDiv, container.firstChild);
+      
+      setTimeout(() => {
+        successDiv.remove();
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

@@ -27,6 +27,80 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '🎮' // Default avatar emoji
   },
+  
+  // User roles and permissions
+  role: {
+    type: String,
+    enum: ['player', 'creator', 'admin'],
+    default: 'player'
+  },
+  
+  // Creator-specific fields
+  creatorProfile: {
+    studioName: {
+      type: String,
+      trim: true,
+      maxlength: [50, 'Studio name must be less than 50 characters']
+    },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Bio must be less than 500 characters']
+    },
+    website: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function(v) {
+          return !v || /^https?:\/\/.+/.test(v);
+        },
+        message: 'Website must be a valid URL'
+      }
+    },
+    verified: {
+      type: Boolean,
+      default: false
+    },
+    payoutEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid payout email']
+    }
+  },
+  
+  // Creator statistics
+  creatorStats: {
+    gamesPublished: {
+      type: Number,
+      default: 0
+    },
+    totalRevenue: {
+      type: Number,
+      default: 0
+    },
+    totalDownloads: {
+      type: Number,
+      default: 0
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    totalReviews: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Financial
+  creatorBalance: {
+    type: Number,
+    default: 0
+  },
+  
   gamesPlayed: {
     type: Number,
     default: 0
@@ -42,6 +116,9 @@ const userSchema = new mongoose.Schema({
   lastLogin: {
     type: Date,
     default: Date.now
+  },
+  creatorSince: {
+    type: Date
   },
   ownedGames: [{
     gameId: {
@@ -120,5 +197,47 @@ userSchema.methods.getAllAccessibleGames = function() {
   const freeGameIds = this.freeGames.map(free => free.gameId);
   return [...new Set([...ownedGameIds, ...freeGameIds])];
 };
+
+// Creator methods
+userSchema.methods.promoteToCreator = function(creatorData = {}) {
+  this.role = 'creator';
+  this.creatorProfile = {
+    ...this.creatorProfile,
+    ...creatorData
+  };
+  if (!this.creatorSince) {
+    this.creatorSince = new Date();
+  }
+  return this.save();
+};
+
+userSchema.methods.updateCreatorStats = function(stats) {
+  this.creatorStats = {
+    ...this.creatorStats,
+    ...stats
+  };
+  return this.save();
+};
+
+userSchema.methods.canPublishGames = function() {
+  return this.role === 'creator' || this.role === 'admin';
+};
+
+userSchema.methods.isVerifiedCreator = function() {
+  return this.role === 'creator' && this.creatorProfile.verified;
+};
+
+// Indexes for better performance
+userSchema.index({ role: 1 });
+userSchema.index({ 'creatorProfile.verified': 1 });
+userSchema.index({ 'creatorStats.totalRevenue': -1 });
+
+// Set creatorSince when role changes to creator
+userSchema.pre('save', function(next) {
+  if (this.isModified('role') && this.role === 'creator' && !this.creatorSince) {
+    this.creatorSince = new Date();
+  }
+  next();
+});
 
 module.exports = mongoose.model('User', userSchema);

@@ -2,29 +2,54 @@
 function startNextQuestion(lobby, api) {
   const questions = [
     {
-      question: "What is the capital of France?",
-      options: ["London", "Paris", "Berlin", "Madrid"],
-      correct: 1
-    },
-    {
-      question: "Which planet is known as the Red Planet?",
-      options: ["Venus", "Mars", "Jupiter", "Saturn"],
-      correct: 1
-    },
-    {
-      question: "What is 2 + 2?",
-      options: ["3", "4", "5", "6"],
-      correct: 1
-    },
-    {
-      question: "Which ocean is the largest?",
-      options: ["Atlantic", "Indian", "Pacific", "Arctic"],
+      question: "Which movie won the Academy Award for Best Picture in 2020?",
+      options: ["1917", "Joker", "Parasite", "Once Upon a Time in Hollywood"],
       correct: 2
     },
     {
-      question: "What year did World War II end?",
-      options: ["1944", "1945", "1946", "1947"],
+      question: "Which artist released the hit single 'Bad Guy' in 2019?",
+      options: ["Billie Eilish", "Ariana Grande", "Dua Lipa", "Lizzo"],
+      correct: 0
+    },
+    {
+      question: "In 2021, which company acquired the video game studio Bethesda?",
+      options: ["Sony", "Microsoft", "Tencent", "Amazon"],
       correct: 1
+    },
+    {
+      question: "Which streaming service released the series 'Squid Game' in 2021?",
+      options: ["Netflix", "HBO Max", "Disney+", "Hulu"],
+      correct: 0
+    },
+    {
+      question: "Who headlined the Super Bowl halftime show in 2022?",
+      options: ["The Weeknd", "Shakira & Jennifer Lopez", "Dr. Dre & Friends", "Rihanna"],
+      correct: 2
+    },
+    {
+      question: "Which Marvel film was the first to gross over $2 billion worldwide?",
+      options: ["Black Panther", "Avengers: Endgame", "Avengers: Infinity War", "Spider-Man: No Way Home"],
+      correct: 1
+    },
+    {
+      question: "Which video game won Game of the Year at The Game Awards 2022?",
+      options: ["Elden Ring", "God of War Ragnarök", "Horizon Forbidden West", "Stray"],
+      correct: 0
+    },
+    {
+      question: "Which social media app introduced 'Reels' in 2020 to compete with TikTok?",
+      options: ["Snapchat", "Twitter", "Instagram", "YouTube"],
+      correct: 2
+    },
+    {
+      question: "In 2023, which artist’s tour was called 'The Eras Tour'?",
+      options: ["Taylor Swift", "Beyoncé", "Harry Styles", "Adele"],
+      correct: 0
+    },
+    {
+      question: "Which actor played the title role in the 2019 film 'Joker'?",
+      options: ["Jared Leto", "Heath Ledger", "Joaquin Phoenix", "Cillian Murphy"],
+      correct: 2
     }
   ];
 

@@ -4,11 +4,14 @@ const Game = require('../models/Game');
 const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
-// Get all available games
+// Get all available games with search, filter, and sort
 router.get('/store', requireAuth, async (req, res) => {
   try {
-    const games = await Game.find({ isActive: true }).select('-__v');
+    const { search, category, sortBy } = req.query;
     const user = await User.findById(req.session.userId);
+    
+    // Use the searchGames static method
+    const games = await Game.searchGames(search, category, sortBy);
     
     // Add ownership status to each game
     const gamesWithOwnership = games.map(game => {
@@ -173,6 +176,102 @@ router.post('/lobby-available', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get lobby games'
+    });
+  }
+});
+
+// Rate a game
+router.post('/rate/:gameId', requireAuth, async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { rating, review } = req.body;
+    const userId = req.session.userId;
+
+    // Validate rating
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Find the game
+    const game = await Game.findOne({ id: gameId, isActive: true });
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    // Add or update rating
+    await game.addRating(userId, rating, review || '');
+
+    res.json({
+      success: true,
+      message: 'Rating submitted successfully',
+      game: {
+        id: game.id,
+        name: game.name,
+        averageRating: game.averageRating,
+        totalRatings: game.totalRatings
+      }
+    });
+
+  } catch (error) {
+    console.error('Rate game error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to rate game'
+    });
+  }
+});
+
+// Get game ratings
+router.get('/ratings/:gameId', async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    
+    const game = await Game.findOne({ id: gameId, isActive: true })
+      .populate('ratings.userId', 'username')
+      .select('ratings averageRating totalRatings');
+    
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      ratings: game.ratings,
+      averageRating: game.averageRating,
+      totalRatings: game.totalRatings
+    });
+
+  } catch (error) {
+    console.error('Get ratings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get ratings'
+    });
+  }
+});
+
+// Get categories
+router.get('/categories', async (req, res) => {
+  try {
+    const categories = await Game.distinct('category', { isActive: true });
+    res.json({
+      success: true,
+      categories: ['all', ...categories]
+    });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get categories'
     });
   }
 });

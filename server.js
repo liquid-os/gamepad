@@ -50,13 +50,24 @@ app.use(getCurrentUser);
 app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/stripe', require('./routes/stripe'));
+app.use('/api/creator', require('./routes/creator'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/games', express.static(path.join(__dirname, 'games')));
 
-const games = new Map();   // all loaded games
+// Serve creator dashboard
+app.get('/creator', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'creator.html'));
+});
+
+// Import dynamic game loader
+const gameLoader = require('./utils/DynamicGameLoader');
+
 const lobbies = new Map(); // active lobbies
+const disconnectedPlayers = new Map(); // temporarily disconnected players
+const playerSessions = new Map(); // track player sessions for reconnection
 
 // Helper function to get available games for a single user
 async function getAvailableGamesForUser(userId) {
@@ -80,7 +91,7 @@ async function getAvailableGamesForUser(userId) {
 
     // Return game metadata for accessible games
     return accessibleGames.map(gameId => {
-      const game = games.get(gameId);
+      const game = gameLoader.getGame(gameId);
       return game ? game.meta : null;
     }).filter(Boolean);
 
@@ -121,7 +132,7 @@ async function getAvailableGamesForLobby(playerIds) {
 
     // Return game metadata for available games
     return availableGames.map(gameId => {
-      const game = games.get(gameId);
+      const game = gameLoader.getGame(gameId);
       return game ? game.meta : null;
     }).filter(Boolean);
 
@@ -144,34 +155,18 @@ function wrapGameModule(gameModule) {
   };
 }
 
-// --- Load games from /games ---
-function loadGames() {
-  const gamesDir = path.join(__dirname, 'games');
-  if (!fs.existsSync(gamesDir)) {
-    console.log('[GameLoader] Games directory not found');
-    return;
+// Initialize dynamic game loader
+async function initializeGameLoader() {
+  try {
+    await gameLoader.initialize();
+    console.log(`[Server] Dynamic game loader initialized with ${gameLoader.getLoadedGamesCount()} games`);
+  } catch (error) {
+    console.error('[Server] Failed to initialize dynamic game loader:', error);
   }
-
-  const folders = fs.readdirSync(gamesDir, { withFileTypes: true })
-    .filter(d => d.isDirectory())
-    .map(d => d.name);
-
-  folders.forEach(id => {
-    const serverPath = path.join(gamesDir, id, 'server.js');
-    if (!fs.existsSync(serverPath)) return;
-
-    try {
-      const rawModule = require(serverPath);
-      const game = wrapGameModule(rawModule);
-      games.set(id, game);
-      console.log(`[GameLoader] Loaded ${game.meta.name} (${id})`);
-    } catch (err) {
-      console.error(`[GameLoader] Failed to load ${id}:`, err);
-    }
-  });
 }
 
-loadGames();
+// Initialize games after MongoDB connection
+initializeGameLoader();
 
 // --- Utility: API object exposed to games ---
 function makeApi(io, lobby) {
@@ -199,6 +194,81 @@ function generateCode() {
 // --- Lobby Namespace ---
 io.of('/lobby').on('connection', socket => {
   console.log(`[Lobby] Connected: ${socket.id} from ${socket.handshake.address}`);
+
+  // Set up heartbeat/ping-pong mechanism
+  socket.on('ping', () => {
+    socket.emit('pong');
+  });
+
+  // Handle player reconnection
+  socket.on('reconnect', ({ playerId, lobbyCode }, callback) => {
+    console.log(`[DEBUG] Reconnection attempt: playerId=${playerId}, lobbyCode=${lobbyCode}`);
+    
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) {
+      return callback?.({ error: 'Lobby not found' });
+    }
+
+    // Check if this player was temporarily disconnected
+    const disconnectedPlayer = disconnectedPlayers.get(playerId);
+    if (disconnectedPlayer && disconnectedPlayer.lobbyCode === lobbyCode) {
+      // Restore player to lobby
+      const restoredPlayer = {
+        id: socket.id, // Update socket ID
+        username: disconnectedPlayer.username,
+        userId: disconnectedPlayer.userId,
+        reconnected: true
+      };
+
+      // Remove from disconnected players
+      disconnectedPlayers.delete(playerId);
+      
+      // Update player in lobby with new socket ID
+      const playerIndex = lobby.players.findIndex(p => p.userId === playerId);
+      if (playerIndex !== -1) {
+        lobby.players[playerIndex] = restoredPlayer;
+      } else {
+        lobby.players.push(restoredPlayer);
+      }
+
+      socket.join(lobbyCode);
+
+      // Notify lobby of reconnection
+      io.of('/lobby').to(lobbyCode).emit('playerReconnected', {
+        player: restoredPlayer,
+        message: `${restoredPlayer.username} has reconnected`
+      });
+
+      // If game is active, reinitialize player in game
+      if (lobby.gameId) {
+        const game = gameLoader.getGame(lobby.gameId);
+        if (game) {
+          try {
+            const api = makeApi(io.of('/lobby'), lobby);
+            game.onPlayerJoin(lobby, api, restoredPlayer);
+            
+            // Send current game state to reconnected player
+            socket.emit('playerGameStarted', {
+              gameId: lobby.gameId,
+              lobbyCode: lobbyCode
+            });
+          } catch (error) {
+            console.error(`[DEBUG] Error reinitializing player in game:`, error);
+          }
+        }
+      }
+
+      console.log(`[DEBUG] Player ${restoredPlayer.username} successfully reconnected to lobby ${lobbyCode}`);
+      return callback?.({
+        success: true,
+        lobbyCode: lobbyCode,
+        player: restoredPlayer,
+        message: 'Successfully reconnected'
+      });
+    }
+
+    callback?.({ error: 'No previous session found' });
+  });
 
   // Note: Games list will be sent after lobby is created/joined
 
@@ -231,7 +301,7 @@ io.of('/lobby').on('connection', socket => {
       const config = require('./config');
       const freeGames = config.FREE_GAMES || [];
       availableGames = freeGames.map(gameId => {
-        const game = games.get(gameId);
+        const game = gameLoader.getGame(gameId);
         return game ? game.meta : null;
       }).filter(Boolean);
     }
@@ -263,7 +333,16 @@ io.of('/lobby').on('connection', socket => {
 
     const player = { id: socket.id, username, userId: userId };
     lobby.players.push(player);
-    if (userId) lobby.playerIds.push(userId);
+    if (userId) {
+      lobby.playerIds.push(userId);
+      // Store player session for potential reconnection
+      playerSessions.set(userId, {
+        username: username,
+        userId: userId,
+        lobbyCode: code,
+        joinedAt: Date.now()
+      });
+    }
     socket.join(code);
 
     // If game is already selected, initialize player for that game
@@ -318,7 +397,7 @@ io.of('/lobby').on('connection', socket => {
       return callback?.({ error: 'Only players can select games. The host cannot select games.' });
     }
 
-    const game = games.get(gameId);
+    const game = gameLoader.getGame(gameId);
     if (!game) {
       console.log(`[DEBUG] Game not found: ${gameId}`);
       return callback?.({ error: 'Game not found' });
@@ -384,9 +463,9 @@ io.of('/lobby').on('connection', socket => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
 
-    const game = games.get(lobby.gameId);
+    const game = gameLoader.getGame(lobby.gameId);
     const player = lobby.players.find(p => p.id === socket.id);
-    if (!player) return;
+    if (!game || !player) return;
 
     const api = makeApi(io.of('/lobby'), lobby);
     game.onAction(lobby, api, player, data);
@@ -450,19 +529,77 @@ io.of('/lobby').on('connection', socket => {
       console.log(`[DEBUG] Checking lobby ${code} for disconnected socket ${socket.id}`);
       console.log(`[DEBUG] Lobby host: ${lobby.host}, Lobby players:`, lobby.players.map(p => p.id));
       
-      // Remove player from lobby
+      // Handle player disconnection with grace period for reconnection
       const playerIndex = lobby.players.findIndex(p => p.id === socket.id);
       if (playerIndex !== -1) {
         const removedPlayer = lobby.players[playerIndex];
-        console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby`);
-        lobby.players.splice(playerIndex, 1);
+        console.log(`[DEBUG] Player ${removedPlayer.username} disconnected from lobby ${code}`);
         
-        // Remove player ID from playerIds array
-        if (removedPlayer.userId) {
-          const userIdIndex = lobby.playerIds.indexOf(removedPlayer.userId);
-          if (userIdIndex !== -1) {
-            lobby.playerIds.splice(userIdIndex, 1);
+        // If player has a userId (authenticated user), give them a grace period for reconnection
+        if (removedPlayer.userId && lobby.gameId) {
+          // Game is active - give grace period for reconnection
+          console.log(`[DEBUG] Player ${removedPlayer.username} disconnected during game - starting grace period`);
+          
+          // Store disconnected player for potential reconnection
+          disconnectedPlayers.set(removedPlayer.userId, {
+            username: removedPlayer.username,
+            userId: removedPlayer.userId,
+            lobbyCode: code,
+            disconnectedAt: Date.now(),
+            gameId: lobby.gameId
+          });
+          
+          // Notify other players about temporary disconnection
+          io.of('/lobby').to(code).emit('playerDisconnected', {
+            player: removedPlayer,
+            message: `${removedPlayer.username} has disconnected (reconnecting...)`,
+            temporary: true
+          });
+          
+          // Set a timeout to permanently remove player if they don't reconnect
+          setTimeout(() => {
+            if (disconnectedPlayers.has(removedPlayer.userId)) {
+              console.log(`[DEBUG] Grace period expired for ${removedPlayer.username} - permanently removing`);
+              disconnectedPlayers.delete(removedPlayer.userId);
+              
+              // Notify lobby of permanent disconnection
+              io.of('/lobby').to(code).emit('playerPermanentlyDisconnected', {
+                player: removedPlayer,
+                message: `${removedPlayer.username} has left the game`
+              });
+              
+              // Remove from lobby permanently
+              const currentPlayerIndex = lobby.players.findIndex(p => p.userId === removedPlayer.userId);
+              if (currentPlayerIndex !== -1) {
+                lobby.players.splice(currentPlayerIndex, 1);
+                const userIdIndex = lobby.playerIds.indexOf(removedPlayer.userId);
+                if (userIdIndex !== -1) {
+                  lobby.playerIds.splice(userIdIndex, 1);
+                }
+              }
+            }
+          }, 30000); // 30 second grace period
+          
+          // Don't remove from lobby immediately - keep them for potential reconnection
+          continue;
+        } else {
+          // No userId or game not active - remove immediately
+          console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby (no grace period)`);
+          lobby.players.splice(playerIndex, 1);
+          
+          if (removedPlayer.userId) {
+            const userIdIndex = lobby.playerIds.indexOf(removedPlayer.userId);
+            if (userIdIndex !== -1) {
+              lobby.playerIds.splice(userIdIndex, 1);
+            }
           }
+          
+          // Notify lobby of disconnection
+          io.of('/lobby').to(code).emit('playerDisconnected', {
+            player: removedPlayer,
+            message: `${removedPlayer.username} has left the lobby`,
+            temporary: false
+          });
         }
       }
 
