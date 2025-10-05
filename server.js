@@ -209,7 +209,7 @@ io.of('/lobby').on('connection', socket => {
       return callback?.({ error: 'Lobby not found' });
     }
 
-    // Check if this player was temporarily disconnected
+    // Check if this player was temporarily disconnected (during active game)
     const disconnectedPlayer = disconnectedPlayers.get(playerId);
     if (disconnectedPlayer && disconnectedPlayer.lobbyCode === lobbyCode) {
       // Restore player to lobby
@@ -265,6 +265,63 @@ io.of('/lobby').on('connection', socket => {
         player: restoredPlayer,
         message: 'Successfully reconnected'
       });
+    }
+
+    // Check if this player has a valid session (for lobby-only reconnections)
+    const playerSession = playerSessions.get(playerId);
+    if (playerSession && playerSession.lobbyCode === lobbyCode) {
+      // Check if player is still in the lobby (might have been removed during disconnect)
+      const existingPlayer = lobby.players.find(p => p.userId === playerId);
+      if (!existingPlayer) {
+        // Player was removed from lobby, add them back
+        const restoredPlayer = {
+          id: socket.id,
+          username: playerSession.username,
+          userId: playerId,
+          reconnected: true
+        };
+        
+        lobby.players.push(restoredPlayer);
+        if (!lobby.playerIds.includes(playerId)) {
+          lobby.playerIds.push(playerId);
+        }
+        
+        socket.join(lobbyCode);
+        
+        // Notify lobby of reconnection
+        io.of('/lobby').to(lobbyCode).emit('playerReconnected', {
+          player: restoredPlayer,
+          message: `${restoredPlayer.username} has reconnected`
+        });
+        
+        // Send updated player list
+        io.of('/lobby').to(lobbyCode).emit('playerListUpdate', lobby.players.map(p => p.username));
+        
+        console.log(`[DEBUG] Player ${restoredPlayer.username} successfully reconnected to lobby ${lobbyCode}`);
+        return callback?.({
+          success: true,
+          lobbyCode: lobbyCode,
+          player: restoredPlayer,
+          message: 'Successfully reconnected'
+        });
+      } else {
+        // Player is still in lobby, just update their socket ID
+        const playerIndex = lobby.players.findIndex(p => p.userId === playerId);
+        if (playerIndex !== -1) {
+          lobby.players[playerIndex].id = socket.id;
+          lobby.players[playerIndex].reconnected = true;
+        }
+        
+        socket.join(lobbyCode);
+        
+        console.log(`[DEBUG] Player ${playerSession.username} successfully reconnected to lobby ${lobbyCode}`);
+        return callback?.({
+          success: true,
+          lobbyCode: lobbyCode,
+          player: lobby.players[playerIndex],
+          message: 'Successfully reconnected'
+        });
+      }
     }
 
     callback?.({ error: 'No previous session found' });
@@ -476,9 +533,11 @@ io.of('/lobby').on('connection', socket => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
 
-    const game = games.get(lobby.gameId);
-    const api = makeApi(io.of('/lobby'), lobby);
-    game.onEnd(lobby, api);
+    const game = gameLoader.getGame(lobby.gameId);
+    if (game) {
+      const api = makeApi(io.of('/lobby'), lobby);
+      game.onEnd(lobby, api);
+    }
 
     io.of('/lobby').to(code).emit('lobbyClosed');
     lobbies.delete(code);
@@ -536,9 +595,10 @@ io.of('/lobby').on('connection', socket => {
         console.log(`[DEBUG] Player ${removedPlayer.username} disconnected from lobby ${code}`);
         
         // If player has a userId (authenticated user), give them a grace period for reconnection
-        if (removedPlayer.userId && lobby.gameId) {
-          // Game is active - give grace period for reconnection
-          console.log(`[DEBUG] Player ${removedPlayer.username} disconnected during game - starting grace period`);
+        if (removedPlayer.userId) {
+          // Give grace period for reconnection (both in lobby and during games)
+          const gracePeriod = 90000; // 90s for both games and lobby
+          console.log(`[DEBUG] Player ${removedPlayer.username} disconnected - starting ${gracePeriod/1000}s grace period`);
           
           // Store disconnected player for potential reconnection
           disconnectedPlayers.set(removedPlayer.userId, {
@@ -562,12 +622,6 @@ io.of('/lobby').on('connection', socket => {
               console.log(`[DEBUG] Grace period expired for ${removedPlayer.username} - permanently removing`);
               disconnectedPlayers.delete(removedPlayer.userId);
               
-              // Notify lobby of permanent disconnection
-              io.of('/lobby').to(code).emit('playerPermanentlyDisconnected', {
-                player: removedPlayer,
-                message: `${removedPlayer.username} has left the game`
-              });
-              
               // Remove from lobby permanently
               const currentPlayerIndex = lobby.players.findIndex(p => p.userId === removedPlayer.userId);
               if (currentPlayerIndex !== -1) {
@@ -576,23 +630,28 @@ io.of('/lobby').on('connection', socket => {
                 if (userIdIndex !== -1) {
                   lobby.playerIds.splice(userIdIndex, 1);
                 }
+                
+                // Update player list for remaining players and host
+                io.of('/lobby').to(code).emit('playerListUpdate', lobby.players.map(p => p.username));
               }
+              
+              // Notify lobby of permanent disconnection
+              io.of('/lobby').to(code).emit('playerPermanentlyDisconnected', {
+                player: removedPlayer,
+                message: `${removedPlayer.username} has left the ${lobby.gameId ? 'game' : 'lobby'}`
+              });
             }
-          }, 30000); // 30 second grace period
+          }, gracePeriod);
           
           // Don't remove from lobby immediately - keep them for potential reconnection
           continue;
         } else {
-          // No userId or game not active - remove immediately
-          console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby (no grace period)`);
+          // No userId - remove immediately
+          console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby (no userId)`);
           lobby.players.splice(playerIndex, 1);
           
-          if (removedPlayer.userId) {
-            const userIdIndex = lobby.playerIds.indexOf(removedPlayer.userId);
-            if (userIdIndex !== -1) {
-              lobby.playerIds.splice(userIdIndex, 1);
-            }
-          }
+          // Update player list for remaining players and host
+          io.of('/lobby').to(code).emit('playerListUpdate', lobby.players.map(p => p.username));
           
           // Notify lobby of disconnection
           io.of('/lobby').to(code).emit('playerDisconnected', {
