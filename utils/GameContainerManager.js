@@ -114,8 +114,7 @@ class GameContainerManager {
       console.log('[GameContainerManager] Docker not available, falling back to child process');
       // Fall back to child process mode
       const GameProcessManager = require('./GameProcessManager');
-      const processManager = new GameProcessManager();
-      return processManager.spawnGameProcess(lobbyId, gameId, lobbyData, io, testGamePath);
+      return GameProcessManager.spawnGameProcess(lobbyId, gameId, lobbyData, io, testGamePath);
     }
     return this.spawnGameContainer(lobbyId, gameId, lobbyData, io, testGamePath);
   }
@@ -134,8 +133,7 @@ class GameContainerManager {
     
     if (!this.isDockerAvailable()) {
       const GameProcessManager = require('./GameProcessManager');
-      const processManager = new GameProcessManager();
-      return processManager.hasActiveProcess(lobbyId);
+      return GameProcessManager.hasActiveProcess(lobbyId);
     }
     return this.hasActiveContainer(lobbyId);
   }
@@ -156,8 +154,7 @@ class GameContainerManager {
     
     if (!this.isDockerAvailable()) {
       const GameProcessManager = require('./GameProcessManager');
-      const processManager = new GameProcessManager();
-      return processManager.terminateProcess(lobbyId);
+      return GameProcessManager.terminateProcess(lobbyId);
     }
     return this.terminateContainer(lobbyId);
   }
@@ -174,7 +171,7 @@ class GameContainerManager {
     console.log('[GameContainerManager] Using Render-enhanced child processes with Docker-like security');
     
     const GameProcessManager = require('./GameProcessManager');
-    const processManager = new GameProcessManager();
+    const processManager = GameProcessManager;
     
     // Store the process manager for this lobby
     this.activeContainers.set(lobbyId, {
