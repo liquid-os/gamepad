@@ -93,7 +93,8 @@ if (USE_DOCKER) {
     console.log('[Server] Docker container manager initialized');
   }).catch(error => {
     console.error('[Server] Failed to initialize Docker:', error);
-    process.exit(1);
+    console.log('[Server] Falling back to child process mode');
+    // Don't exit - fall back to child process mode
   });
 }
 

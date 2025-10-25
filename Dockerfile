@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
-# Install dumb-init and Docker CLI for container management
-RUN apk add --no-cache dumb-init docker-cli
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
 # Set working directory
 WORKDIR /app

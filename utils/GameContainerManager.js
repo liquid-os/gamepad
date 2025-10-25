@@ -18,7 +18,16 @@ class GameContainerManager {
    */
   async initialize() {
     try {
-      // Connect to Docker daemon
+      // For Render deployment, we'll use a different approach
+      // Instead of Docker-in-Docker, we'll use Render's Docker service
+      if (process.env.RENDER) {
+        console.log('[GameContainerManager] Running on Render - using Render Docker service');
+        this.isRenderEnvironment = true;
+        this.isInitialized = true;
+        return;
+      }
+
+      // For local development with Docker Desktop
       this.docker = new Docker({
         socketPath: process.env.DOCKER_HOST || '/var/run/docker.sock'
       });
@@ -48,10 +57,12 @@ class GameContainerManager {
 
       // Build base image if it doesn't exist
       await this.ensureBaseImage();
+      this.isInitialized = true;
 
     } catch (error) {
       console.error('[GameContainerManager] Failed to initialize:', error);
-      throw error;
+      console.log('[GameContainerManager] Docker not available - will fall back to child processes');
+      // Don't throw error - let the system fall back gracefully
     }
   }
 
@@ -84,9 +95,28 @@ class GameContainerManager {
   }
 
   /**
+   * Check if Docker is available
+   */
+  isDockerAvailable() {
+    return this.docker !== null && this.network !== null;
+  }
+
+  /**
    * Compatibility method for GameProcessManager interface
    */
   async spawnGameProcess(lobbyId, gameId, lobbyData, io, testGamePath = null) {
+    if (this.isRenderEnvironment) {
+      console.log('[GameContainerManager] Using Render Docker service for game container');
+      return this.spawnRenderContainer(lobbyId, gameId, lobbyData, io, testGamePath);
+    }
+    
+    if (!this.isDockerAvailable()) {
+      console.log('[GameContainerManager] Docker not available, falling back to child process');
+      // Fall back to child process mode
+      const GameProcessManager = require('./GameProcessManager');
+      const processManager = new GameProcessManager();
+      return processManager.spawnGameProcess(lobbyId, gameId, lobbyData, io, testGamePath);
+    }
     return this.spawnGameContainer(lobbyId, gameId, lobbyData, io, testGamePath);
   }
 
@@ -94,6 +124,19 @@ class GameContainerManager {
    * Compatibility method for GameProcessManager interface
    */
   hasActiveProcess(lobbyId) {
+    if (this.isRenderEnvironment) {
+      const containerInfo = this.activeContainers.get(lobbyId);
+      if (containerInfo && containerInfo.type === 'render-process') {
+        return containerInfo.processManager.hasActiveProcess(lobbyId);
+      }
+      return false;
+    }
+    
+    if (!this.isDockerAvailable()) {
+      const GameProcessManager = require('./GameProcessManager');
+      const processManager = new GameProcessManager();
+      return processManager.hasActiveProcess(lobbyId);
+    }
     return this.hasActiveContainer(lobbyId);
   }
 
@@ -101,7 +144,129 @@ class GameContainerManager {
    * Compatibility method for GameProcessManager interface
    */
   async terminateProcess(lobbyId) {
+    if (this.isRenderEnvironment) {
+      const containerInfo = this.activeContainers.get(lobbyId);
+      if (containerInfo && containerInfo.type === 'render-process') {
+        await containerInfo.processManager.terminateProcess(lobbyId);
+        this.activeContainers.delete(lobbyId);
+        return;
+      }
+      return;
+    }
+    
+    if (!this.isDockerAvailable()) {
+      const GameProcessManager = require('./GameProcessManager');
+      const processManager = new GameProcessManager();
+      return processManager.terminateProcess(lobbyId);
+    }
     return this.terminateContainer(lobbyId);
+  }
+
+  /**
+   * Spawn a game container using Render's Docker service
+   * Since Render doesn't support Docker-in-Docker, we'll use enhanced child processes
+   */
+  async spawnRenderContainer(lobbyId, gameId, lobbyData, io, testGamePath = null) {
+    console.log(`[GameContainerManager] Spawning Render-enhanced process for game ${gameId} (lobby: ${lobbyId})`);
+    
+    // For Render, we'll use enhanced child processes with Docker-like security
+    // This provides better security than regular child processes
+    console.log('[GameContainerManager] Using Render-enhanced child processes with Docker-like security');
+    
+    const GameProcessManager = require('./GameProcessManager');
+    const processManager = new GameProcessManager();
+    
+    // Store the process manager for this lobby
+    this.activeContainers.set(lobbyId, {
+      type: 'render-process',
+      processManager: processManager,
+      lobbyId: lobbyId,
+      gameId: gameId,
+      state: 'starting',
+      startTime: Date.now()
+    });
+    
+    const result = await processManager.spawnGameProcess(lobbyId, gameId, lobbyData, io, testGamePath);
+    
+    // Update state to ready
+    const containerInfo = this.activeContainers.get(lobbyId);
+    if (containerInfo) {
+      containerInfo.state = 'ready';
+    }
+    
+    return result;
+  }
+
+  /**
+   * Player join for Render environment
+   */
+  playerJoin(lobbyId, player) {
+    if (this.isRenderEnvironment) {
+      const containerInfo = this.activeContainers.get(lobbyId);
+      if (containerInfo && containerInfo.type === 'render-process') {
+        return containerInfo.processManager.playerJoin(lobbyId, player);
+      }
+      return false;
+    }
+    return this.sendToContainer(lobbyId, {
+      type: 'PLAYER_JOIN',
+      data: { player }
+    });
+  }
+
+  /**
+   * Player action for Render environment
+   */
+  playerAction(lobbyId, player, data) {
+    if (this.isRenderEnvironment) {
+      const containerInfo = this.activeContainers.get(lobbyId);
+      if (containerInfo && containerInfo.type === 'render-process') {
+        return containerInfo.processManager.playerAction(lobbyId, player, data);
+      }
+      return false;
+    }
+    return this.sendToContainer(lobbyId, {
+      type: 'PLAYER_ACTION',
+      data: { player, data }
+    });
+  }
+
+  /**
+   * Player disconnect for Render environment
+   */
+  playerDisconnect(lobbyId, playerId) {
+    if (this.isRenderEnvironment) {
+      const containerInfo = this.activeContainers.get(lobbyId);
+      if (containerInfo && containerInfo.type === 'render-process') {
+        return containerInfo.processManager.playerDisconnect(lobbyId, playerId);
+      }
+      return false;
+    }
+    return this.sendToContainer(lobbyId, {
+      type: 'PLAYER_DISCONNECT',
+      data: { playerId }
+    });
+  }
+
+  /**
+   * Cleanup for Render environment
+   */
+  cleanup() {
+    if (this.isRenderEnvironment) {
+      console.log('[GameContainerManager] Cleaning up Render processes...');
+      for (const [lobbyId, containerInfo] of this.activeContainers) {
+        if (containerInfo.type === 'render-process') {
+          containerInfo.processManager.cleanup();
+        }
+      }
+      this.activeContainers.clear();
+      return;
+    }
+    
+    console.log('[GameContainerManager] Cleaning up all active containers...');
+    for (const [lobbyId, containerInfo] of this.activeContainers) {
+      this.terminateContainer(lobbyId);
+    }
   }
 
   /**

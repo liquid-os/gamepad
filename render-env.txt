@@ -1,0 +1,17 @@
+# Render Environment Configuration
+# Docker Configuration (enabled for Render - uses Render's Docker service)
+USE_DOCKER=true
+
+# Environment
+NODE_ENV=production
+
+# Database
+MONGODB_URI=mongodb+srv://root:4FczYoVyrjPuJSim@gamepad.ypzpfer.mongodb.net/?retryWrites=true&w=majority&appName=gamepad
+
+# Session Secret (secure random string generated)
+SESSION_SECRET=884506ea2349fe8d01c0c7267454fb9e2bba272eae784a6b64d612fcf5ac1a8f
+
+# Stripe Configuration (your actual live keys)
+STRIPE_SECRET_KEY=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
+STRIPE_PUBLISHABLE_KEY=pk_live_51SE3RsAmeE6qn0TrpBdG5twAazBGVz7lciz4mDrIS9JEysPLH9KzsHQ79Y2NAfeBLiCmZZ3QlUQRVvMN1BXWNCPJ00uP4XcBXI
+STRIPE_WEBHOOK_SECRET=whsec_tpUZe4ctOvOAnKMN6T5y1br30YmURLxN
