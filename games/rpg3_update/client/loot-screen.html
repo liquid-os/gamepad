@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loot Screen</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .loot-container {
+            text-align: center;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .loot-title {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            color: #ffd700;
+        }
+
+        .item-display {
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid #ffd700;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        .item-icon {
+            font-size: 5em;
+            margin-bottom: 15px;
+        }
+
+        .item-name {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        .item-description {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        .item-rarity {
+            font-size: 1.1em;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .rarity-common { background: #9ca3af; }
+        .rarity-uncommon { background: #10b981; }
+        .rarity-rare { background: #3b82f6; }
+        .rarity-epic { background: #8b5cf6; }
+        .rarity-legendary { background: #f59e0b; }
+
+        .timer-container {
+            margin: 20px 0;
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ef4444 0%, #fbbf24 50%, #10b981 100%);
+            width: 100%;
+            transition: width 0.1s linear;
+            border-radius: 10px;
+        }
+
+        .timer-text {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .rolls-display {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            min-height: 100px;
+        }
+
+        .roll-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .roll-player {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .roll-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .winner-announcement {
+            font-size: 2em;
+            color: #10b981;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .loot-progress {
+            font-size: 1.2em;
+            margin: 20px 0;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .action-btn {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .roll-btn {
+            background: linear-gradient(45deg, #10b981, #059669);
+            color: white;
+        }
+
+        .roll-btn:hover {
+            background: linear-gradient(45deg, #059669, #047857);
+            transform: translateY(-2px);
+        }
+
+        .pass-btn {
+            background: linear-gradient(45deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .pass-btn:hover {
+            background: linear-gradient(45deg, #4b5563, #374151);
+            transform: translateY(-2px);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .player-status {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .player-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 5px;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .player-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .player-action {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .waiting-message {
+            font-size: 1.5em;
+            color: #fbbf24;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="loot-container">
+        <div class="loot-title">Victory Loot!</div>
+        
+        <div class="loot-progress" id="lootProgress">
+            Item 1 of 3
+        </div>
+
+        <div class="item-display" id="itemDisplay">
+            <div class="item-icon-container" id="itemIconContainer">
+                <img id="itemIcon" src="" alt="Item" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; document.getElementById('itemIconFallback').style.display='block';">
+                <div id="itemIconFallback" style="display: none; font-size: 5em;">⚔️</div>
+            </div>
+            <div class="item-name" id="itemName">Sharpened Blade</div>
+            <div class="item-description" id="itemDescription">
+                Increases physical damage by 5
+            </div>
+            <div class="item-rarity rarity-common" id="itemRarity">Common</div>
+        </div>
+
+        <div class="timer-container">
+            <div class="timer-bar">
+                <div class="timer-fill" id="timerFill"></div>
+            </div>
+            <div class="timer-text" id="timerText">Time remaining: 10s</div>
+        </div>
+
+        <div class="player-status" id="playerStatus">
+            <!-- Player status will be populated here -->
+        </div>
+
+        <!-- Action buttons removed from host screen - only on player devices -->
+
+        <div class="rolls-display" id="rollsDisplay" style="display: none;">
+            <h3>Rolls:</h3>
+            <div id="rollsList"></div>
+        </div>
+
+        <div class="winner-announcement" id="winnerAnnouncement" style="display: none;">
+            <!-- Winner announcement will appear here -->
+        </div>
+
+        <div class="waiting-message" id="waitingMessage" style="display: none;">
+            Waiting for other players...
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentItem = null;
+        let hasActed = false;
+        let timeRemaining = 10;
+        let timerInterval = null;
+
+        // Initialize socket connection
+        function initializeSocket() {
+            console.log('[LOOT SCREEN] Initializing socket...');
+            console.log('[LOOT SCREEN] window.parent:', window.parent);
+            console.log('[LOOT SCREEN] window.parent.socket:', window.parent.socket);
+            
+            // Get socket from parent window
+            socket = window.parent.socket;
+            if (!socket) {
+                console.error('[LOOT SCREEN] ERROR: Socket not available from parent window!');
+                return;
+            }
+
+            console.log('[LOOT SCREEN] Socket initialized successfully');
+            console.log('[LOOT SCREEN] Socket connected:', socket.connected);
+
+            // IMPORTANT: Remove any existing listeners first to prevent duplicates
+            socket.off('lootItem');
+            socket.off('lootRolls');
+            socket.off('lootWinner');
+            socket.off('lootComplete');
+            socket.off('playerLootAction');
+
+            // Listen for loot events
+            socket.on('lootItem', (data) => {
+                console.log('[LOOT SCREEN] ✅ Received loot item event:', data);
+                showItem(data);
+            });
+
+            socket.on('lootRolls', (data) => {
+                console.log('Received loot rolls:', data);
+                showRolls(data);
+            });
+
+            socket.on('lootWinner', (data) => {
+                console.log('Received loot winner:', data);
+                showWinner(data);
+            });
+
+            socket.on('lootComplete', () => {
+                console.log('Loot phase complete');
+                // Hide loot screen and continue to next encounter
+                setTimeout(() => {
+                    window.parent.postMessage({ type: 'lootComplete' }, '*');
+                }, 3000);
+            });
+
+            socket.on('playerLootAction', (data) => {
+                console.log('Player action:', data);
+                updatePlayerStatus(data);
+            });
+        }
+
+        function showItem(itemData) {
+            console.log('[LOOT SCREEN] 🎁 showItem() called with:', itemData);
+            console.log('[LOOT SCREEN] Item name:', itemData.name);
+            console.log('[LOOT SCREEN] Item icon:', itemData.icon);
+            console.log('[LOOT SCREEN] Item rarity:', itemData.rarity);
+            
+            currentItem = itemData;
+            hasActed = false;
+            timeRemaining = 10;
+
+            // Set item icon (PNG with fallback)
+            const itemIcon = document.getElementById('itemIcon');
+            const itemIconFallback = document.getElementById('itemIconFallback');
+            
+            console.log('[LOOT SCREEN] Setting item icon...');
+            
+            if (itemData.icon && itemData.icon.startsWith('/')) {
+                console.log('[LOOT SCREEN] Using PNG icon:', itemData.icon);
+                itemIcon.src = itemData.icon;
+                itemIcon.style.display = 'block';
+                itemIconFallback.style.display = 'none';
+            } else {
+                console.log('[LOOT SCREEN] Using emoji fallback:', itemData.iconFallback || itemData.icon);
+                itemIcon.style.display = 'none';
+                itemIconFallback.textContent = itemData.iconFallback || itemData.icon || '❓';
+                itemIconFallback.style.display = 'block';
+            }
+            
+            console.log('[LOOT SCREEN] Setting item text fields...');
+            document.getElementById('itemName').textContent = itemData.name;
+            document.getElementById('itemDescription').textContent = itemData.description;
+            document.getElementById('itemRarity').textContent = itemData.rarity.toUpperCase();
+            document.getElementById('itemRarity').className = `item-rarity rarity-${itemData.rarity}`;
+            console.log('[LOOT SCREEN] ✅ Item display updated successfully');
+
+            // Clear previous player status
+            const statusContainer = document.getElementById('playerStatusContainer');
+            if (statusContainer) {
+                statusContainer.innerHTML = '';
+            }
+
+            // Action buttons are hidden on host screen
+            document.getElementById('rollsDisplay').style.display = 'none';
+            document.getElementById('winnerAnnouncement').style.display = 'none';
+            document.getElementById('waitingMessage').style.display = 'none';
+
+            // Start timer
+            startTimer();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimer();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    if (!hasActed) {
+                        // Auto-pass if no action taken
+                        passOnItem();
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const percentage = (timeRemaining / 10) * 100;
+            document.getElementById('timerFill').style.width = percentage + '%';
+            document.getElementById('timerText').textContent = `Time remaining: ${timeRemaining}s`;
+        }
+
+        function rollForItem() {
+            if (hasActed) return;
+            
+            hasActed = true;
+            const roll = Math.floor(Math.random() * 100) + 1;
+            
+            // Send roll to server
+            socket.emit('lootRoll', {
+                itemId: currentItem.id,
+                roll: roll
+            });
+
+            // Disable buttons
+            document.getElementById('rollBtn').disabled = true;
+            document.getElementById('passBtn').disabled = true;
+
+            // Show waiting message
+            document.getElementById('waitingMessage').style.display = 'block';
+        }
+
+        function passOnItem() {
+            if (hasActed) return;
+            
+            hasActed = true;
+            
+            // Send pass to server
+            socket.emit('lootPass', {
+                itemId: currentItem.id
+            });
+
+            // Disable buttons
+            document.getElementById('rollBtn').disabled = true;
+            document.getElementById('passBtn').disabled = true;
+
+            // Show waiting message
+            document.getElementById('waitingMessage').style.display = 'block';
+        }
+
+        function showRolls(rollsData) {
+            document.getElementById('rollsDisplay').style.display = 'block';
+            document.getElementById('actionButtons').style.display = 'none';
+            document.getElementById('waitingMessage').style.display = 'none';
+
+            const rollsList = document.getElementById('rollsList');
+            rollsList.innerHTML = '';
+
+            rollsData.rolls.forEach(roll => {
+                const rollEntry = document.createElement('div');
+                rollEntry.className = 'roll-entry';
+                rollEntry.innerHTML = `
+                    <span class="roll-player">${roll.playerName}</span>
+                    <span class="roll-value">${roll.roll}</span>
+                `;
+                rollsList.appendChild(rollEntry);
+            });
+        }
+
+        function showWinner(winnerData) {
+            document.getElementById('winnerAnnouncement').style.display = 'block';
+            document.getElementById('winnerAnnouncement').innerHTML = 
+                `${winnerData.winner} won the ${winnerData.item.name} with a roll of ${winnerData.roll}!`;
+        }
+
+        function updatePlayerStatus(actionData) {
+            // Create or update player action display
+            const statusContainer = document.getElementById('playerStatusContainer');
+            if (!statusContainer) {
+                // Create the container if it doesn't exist
+                const container = document.createElement('div');
+                container.id = 'playerStatusContainer';
+                container.style.cssText = `
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: rgba(0,0,0,0.3);
+                    border-radius: 10px;
+                `;
+                document.querySelector('.timer-container').appendChild(container);
+            }
+            
+            const container = document.getElementById('playerStatusContainer');
+            
+            // Add player action to display
+            const actionDiv = document.createElement('div');
+            actionDiv.style.cssText = `
+                padding: 8px;
+                margin: 5px 0;
+                background: ${actionData.action === 'roll' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(107, 114, 128, 0.3)'};
+                border-radius: 5px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+            
+            actionDiv.innerHTML = `
+                <span style="font-weight: bold;">${actionData.playerName}</span>
+                <span>${actionData.action === 'roll' ? `🎲 Rolled ${actionData.roll}` : '❌ Passed'}</span>
+            `;
+            
+            container.appendChild(actionDiv);
+        }
+
+        // Listen for messages from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'lootData') {
+                console.log('[LOOT SCREEN] Received loot data from parent:', event.data.data);
+                // This was an attempt to send initial data, but we actually get it via socket
+                // Just log for debugging
+            }
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[LOOT SCREEN] DOM loaded, initializing socket');
+            initializeSocket();
+            
+            // Clear the default hardcoded item display
+            document.getElementById('itemName').textContent = 'Loading...';
+            document.getElementById('itemDescription').textContent = 'Waiting for loot data...';
+            document.getElementById('itemRarity').textContent = '';
+            document.getElementById('itemIcon').style.display = 'none';
+            document.getElementById('itemIconFallback').style.display = 'block';
+            document.getElementById('itemIconFallback').textContent = '⏳';
+        });
+    </script>
+</body>
+</html>

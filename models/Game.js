@@ -31,7 +31,7 @@ const gameSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['strategy', 'trivia', 'word', 'action', 'puzzle'],
+    enum: ['strategy', 'trivia', 'word', 'action', 'puzzle', 'rpg'],
     default: 'strategy'
   },
   isActive: {
@@ -41,6 +41,10 @@ const gameSchema = new mongoose.Schema({
   thumbnail: {
     type: String,
     default: '🎮'
+  },
+  logo: {
+    type: String,
+    default: null // Path to logo file: /game-logos/{gameId}.png
   },
   images: [{
     url: {
@@ -128,7 +132,27 @@ const gameSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['draft', 'pending', 'approved', 'rejected'],
-    default: 'approved' // Existing games are approved
+    default: 'pending' // New games require approval
+  },
+  approved: {
+    type: Boolean,
+    default: false // Games need admin approval
+  },
+  submittedForApproval: {
+    type: Boolean,
+    default: false
+  },
+  hasPendingUpdate: {
+    type: Boolean,
+    default: false
+  },
+  pendingUpdatePath: {
+    type: String,
+    default: null
+  },
+  pendingUpdateSubmittedAt: {
+    type: Date,
+    default: null
   },
   version: {
     type: String,
@@ -150,6 +174,16 @@ const gameSchema = new mongoose.Schema({
   downloadCount: {
     type: Number,
     default: 0
+  },
+  
+  // Deployment tracking
+  deployedAt: {
+    type: Date,
+    default: Date.now
+  },
+  folderPath: {
+    type: String,
+    default: null // Path to game folder in /games directory
   },
   
   createdAt: {
@@ -235,7 +269,7 @@ gameSchema.statics.searchGames = function(query, category, sortBy = 'averageRati
 // Static method to get approved games for dynamic loading
 gameSchema.statics.getApprovedGames = function() {
   return this.find({ 
-    status: 'approved', 
+    approved: true,
     isActive: true 
   }).populate('creatorId', 'username creatorProfile.studioName');
 };
@@ -274,6 +308,27 @@ gameSchema.methods.validateCode = function() {
 gameSchema.methods.incrementDownloads = function() {
   this.downloadCount += 1;
   return this.save();
+};
+
+// Method to check if game is deployed to file system
+gameSchema.methods.isDeployed = function() {
+  const path = require('path');
+  const fs = require('fs');
+  
+  if (!this.folderPath) {
+    return false;
+  }
+  
+  const fullPath = path.join(__dirname, '..', 'games', this.id);
+  const serverPath = path.join(fullPath, 'server.js');
+  
+  return fs.existsSync(serverPath);
+};
+
+// Method to get deployment path
+gameSchema.methods.getDeploymentPath = function() {
+  const path = require('path');
+  return path.join(__dirname, '..', 'games', this.id);
 };
 
 // Indexes for better performance

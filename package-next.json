@@ -1,0 +1,36 @@
+{
+  "name": "gamepad-nextjs",
+  "version": "2.0.0",
+  "scripts": {
+    "dev": "node server-next.js",
+    "build": "next build",
+    "start": "NODE_ENV=production node server-next.js",
+    "populate-games": "node scripts/populateGames.js",
+    "grant-free-games": "node scripts/grantFreeGames.js"
+  },
+  "dependencies": {
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "bcryptjs": "^2.4.3",
+    "connect-mongo": "^5.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "express-session": "^1.17.3",
+    "jszip": "^3.10.1",
+    "mongoose": "^8.0.3",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "stripe": "^19.0.0",
+    "swr": "^2.2.4",
+    "iron-session": "^8.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
+    "typescript": "^5.3.3"
+  }
+}
+

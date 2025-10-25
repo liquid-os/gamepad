@@ -1,0 +1,353 @@
+/* Game Template - Styles */
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
+/* Game container */
+.game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Game header */
+.game-header {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.game-header h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2d3748;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.phase {
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.players {
+    background: #e2e8f0;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+/* Game content */
+.game-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.phase-content {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    text-align: center;
+}
+
+.phase-content h2 {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+    color: #2d3748;
+}
+
+.phase-content p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* Game code display */
+.game-code {
+    background: #2d3748;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin: 20px 0;
+    display: inline-block;
+}
+
+/* Buttons */
+.btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 5px;
+    min-width: 120px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+}
+
+.btn-action {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Game board */
+.game-board {
+    text-align: center;
+}
+
+.player-scores {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.player-score {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.player-score:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+}
+
+.player-name {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.player-points {
+    background: #667eea;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Game actions */
+.game-actions {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+/* Game results */
+.game-results {
+    text-align: center;
+}
+
+.winner {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #48bb78;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border-radius: 15px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.final-scores {
+    margin: 20px 0;
+}
+
+.final-score {
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.final-score.winner {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    border-color: #38a169;
+}
+
+.final-score .rank {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.final-score .name {
+    font-weight: 600;
+    flex: 1;
+    text-align: left;
+    margin-left: 15px;
+}
+
+.final-score .score {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* Game messages */
+.game-messages {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.message {
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.message.info {
+    background: #e6f3ff;
+    color: #0066cc;
+    border-left: 4px solid #0066cc;
+}
+
+.message.error {
+    background: #ffe6e6;
+    color: #cc0000;
+    border-left: 4px solid #cc0000;
+}
+
+.message.success {
+    background: #e6ffe6;
+    color: #006600;
+    border-left: 4px solid #006600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .game-container {
+        padding: 10px;
+    }
+    
+    .game-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .phase-content {
+        padding: 20px;
+    }
+    
+    .phase-content h2 {
+        font-size: 1.4rem;
+    }
+    
+    .game-code {
+        font-size: 1.2rem;
+        padding: 12px 20px;
+    }
+    
+    .player-scores {
+        grid-template-columns: 1fr;
+    }
+    
+    .game-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .btn {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-header {
+        padding: 15px;
+    }
+    
+    .phase-content {
+        padding: 15px;
+    }
+    
+    .game-info {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+}

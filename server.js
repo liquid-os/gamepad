@@ -56,14 +56,29 @@ app.use('/api/admin', require('./routes/admin'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/games', express.static(path.join(__dirname, 'games')));
+app.use('/game-logos', express.static(path.join(__dirname, 'public/game-logos')));
+
+// Explicit favicon route for better caching
+app.get('/favicon.ico', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
 
 // Serve creator dashboard
 app.get('/creator', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'creator.html'));
 });
 
-// Import dynamic game loader
+// Import dynamic game loader and process manager
 const gameLoader = require('./utils/DynamicGameLoader');
+const gameProcessManager = require('./utils/GameProcessManager');
+
+// Initialize game loader on server start
+gameLoader.initialize().then(() => {
+  console.log('[Server] Game loader initialized successfully');
+}).catch(error => {
+  console.error('[Server] Failed to initialize game loader:', error);
+});
 
 const lobbies = new Map(); // active lobbies
 const disconnectedPlayers = new Map(); // temporarily disconnected players
@@ -78,6 +93,7 @@ async function getAvailableGamesForUser(userId) {
 
     // Import User model
     const User = require('./models/User');
+    const Game = require('./models/Game');
     
     // Get user and their accessible games (owned + free)
     const user = await User.findById(userId).select('ownedGames freeGames');
@@ -86,13 +102,45 @@ async function getAvailableGamesForUser(userId) {
       return [];
     }
 
-    // Get all accessible games for this user
+    // Get all accessible games for this user (approved only)
     const accessibleGames = user.getAllAccessibleGames();
+    
+    // Add creator's own games (even if unapproved)
+    const creatorGames = await Game.find({ 
+      creatorId: userId,
+      isActive: true 
+    }).select('id');
+    
+    const creatorGameIds = creatorGames.map(g => g.id);
+    
+    // Merge and deduplicate
+    const allGameIds = [...new Set([...accessibleGames, ...creatorGameIds])];
 
     // Return game metadata for accessible games
-    return accessibleGames.map(gameId => {
+    return allGameIds.map(gameId => {
       const game = gameLoader.getGame(gameId);
-      return game ? game.meta : null;
+      if (game) {
+        return game.meta;
+      } else {
+        // For creator's unapproved games, get metadata from database
+        const gameDoc = creatorGames.find(g => g.id === gameId);
+        if (gameDoc) {
+          // Load creator's unapproved game metadata
+          return {
+            id: gameId,
+            name: gameDoc.name || gameId,
+            description: gameDoc.description || '',
+            minPlayers: gameDoc.minPlayers || 2,
+            maxPlayers: gameDoc.maxPlayers || 8,
+            category: gameDoc.category || 'strategy',
+            price: gameDoc.price || 0,
+            approved: gameDoc.approved,
+            creatorId: gameDoc.creatorId,
+            creatorName: 'You'
+          };
+        }
+      }
+      return null;
     }).filter(Boolean);
 
   } catch (error) {
@@ -167,6 +215,12 @@ async function initializeGameLoader() {
 
 // Initialize games after MongoDB connection
 initializeGameLoader();
+
+// Set up GameProcessManager with lobby data provider and IO instance
+gameProcessManager.setLobbyDataProvider((lobbyId) => {
+  return lobbies.get(lobbyId);
+});
+gameProcessManager.setIOInstance(io.of('/lobby'));
 
 // --- Utility: API object exposed to games ---
 function makeApi(io, lobby) {
@@ -330,7 +384,9 @@ io.of('/lobby').on('connection', socket => {
   // Note: Games list will be sent after lobby is created/joined
 
   // Create a lobby (host is separate from players)
-  socket.on('createLobby', async ({ username, userId }, callback) => {
+  socket.on('createLobby', async ({ username, userId, isTestLobby, testGameId, testGamePath }, callback) => {
+    console.log(`[DEBUG] createLobby called: isTestLobby=${isTestLobby}, testGameId=${testGameId}, testGamePath=${testGamePath}`);
+    
     const code = generateCode();
     const lobby = {
       id: code,
@@ -341,17 +397,52 @@ io.of('/lobby').on('connection', socket => {
       state: {},
       playerIds: [] // Store user IDs for game ownership checking
     };
+
+    // Add test lobby properties if this is a test lobby
+    if (isTestLobby && testGameId) {
+      lobby.isTestLobby = true;
+      lobby.testGameId = testGameId;
+      lobby.testGamePath = testGamePath;
+      lobby.allowedUsernames = [username]; // Creator is initially allowed
+      lobby.creatorId = userId;
+      console.log(`[DEBUG] Created test lobby with testGamePath: ${testGamePath}`);
+    }
+
     lobbies.set(code, lobby);
 
-    console.log(`[DEBUG] Created lobby ${code} with host ${socket.id}`);
+    console.log(`[DEBUG] Created lobby ${code} with host ${socket.id}${isTestLobby ? ' (TEST LOBBY)' : ''}`);
     console.log(`[DEBUG] Lobby players:`, lobby.players);
 
     socket.join(code);
 
     // Get available games for this lobby
-    // If host has userId, use their games; otherwise use free games only
     let availableGames = [];
-    if (userId) {
+    if (isTestLobby && testGameId) {
+      // For test lobbies, only show the test game
+      const game = gameLoader.getGame(testGameId);
+      if (game) {
+        availableGames = [game.meta];
+      } else {
+        // If game not in loader, create metadata from test path
+        const fs = require('fs');
+        const path = require('path');
+        const testPath = path.join(__dirname, 'games', testGamePath);
+        const serverPath = path.join(testPath, 'server.js');
+        
+        if (fs.existsSync(serverPath)) {
+          try {
+            // Load game module to get metadata
+            delete require.cache[require.resolve(serverPath)];
+            const gameModule = require(serverPath);
+            if (gameModule.meta) {
+              availableGames = [gameModule.meta];
+            }
+          } catch (error) {
+            console.error(`[DEBUG] Failed to load test game ${testGameId} from ${testPath}:`, error);
+          }
+        }
+      }
+    } else if (userId) {
       availableGames = await getAvailableGamesForUser(userId);
     } else {
       // For non-authenticated hosts, only show free games
@@ -366,7 +457,8 @@ io.of('/lobby').on('connection', socket => {
     callback?.({
       code,
       games: availableGames,
-      isHost: true
+      isHost: true,
+      isTestLobby: isTestLobby || false
     });
 
     // Host sees empty player list initially
@@ -386,6 +478,61 @@ io.of('/lobby').on('connection', socket => {
     if (socket.id === lobby.host) {
       console.log(`[DEBUG] Host trying to join as player - blocked`);
       return callback?.({ error: 'Host cannot join as player from same device' });
+    }
+
+    // Check if this is a test lobby and validate access
+    if (lobby.isTestLobby) {
+      if (!lobby.allowedUsernames || !lobby.allowedUsernames.includes(username)) {
+        console.log(`[DEBUG] User ${username} not authorized for test lobby ${code}`);
+        return callback?.({ 
+          error: 'This is a test lobby. Only invited users can join.',
+          details: 'Contact the lobby host to be invited.'
+        });
+      }
+    }
+
+    // Check if a game is in progress and this player is reconnecting
+    if (lobby.gameId && lobby.gameStarted) {
+      const game = gameLoader.getGame(lobby.gameId);
+      if (game && typeof game.playerResync === 'function') {
+        console.log(`[RECONNECT] Checking if ${username} can reconnect to in-progress game`);
+        const api = makeApi(io.of('/lobby'), lobby);
+        const player = { id: socket.id, username, userId: userId };
+        
+        const reconnected = game.playerResync(lobby, api, player);
+        
+        if (reconnected) {
+          console.log(`[RECONNECT] Player ${username} reconnected to in-progress game`);
+          socket.join(code);
+          
+          // Update player session
+          if (userId) {
+            playerSessions.set(userId, {
+              username: username,
+              userId: userId,
+              lobbyCode: code,
+              joinedAt: Date.now()
+            });
+          }
+          
+          // Get available games for this lobby
+          const availableGames = await getAvailableGamesForLobby(lobby.playerIds);
+          
+          callback?.({
+            code,
+            games: availableGames,
+            username,
+            gameId: lobby.gameId,
+            isHost: false,
+            reconnected: true
+          });
+          
+          // Don't update player list since they're already in it
+          return;
+        } else {
+          console.log(`[RECONNECT] Player ${username} not found in game state, treating as new player`);
+        }
+      }
     }
 
     const player = { id: socket.id, username, userId: userId };
@@ -419,7 +566,8 @@ io.of('/lobby').on('connection', socket => {
       games: availableGames,
       username,
       gameId: lobby.gameId,
-      isHost: false
+      isHost: false,
+      reconnected: false
     });
 
     // Update player list for everyone (including host)
@@ -431,7 +579,7 @@ io.of('/lobby').on('connection', socket => {
   });
 
   // Select a game (any player can do this)
-  socket.on('selectGame', ({ code, gameId }, callback) => {
+  socket.on('selectGame', async ({ code, gameId }, callback) => {
     console.log(`[DEBUG] selectGame called: code=${code}, gameId=${gameId}, socketId=${socket.id}`);
     
     const lobby = lobbies.get(code);
@@ -454,25 +602,57 @@ io.of('/lobby').on('connection', socket => {
       return callback?.({ error: 'Only players can select games. The host cannot select games.' });
     }
 
-    const game = gameLoader.getGame(gameId);
+    // For test lobbies, verify the selected game matches the test game
+    if (lobby.isTestLobby) {
+      if (gameId !== lobby.testGameId) {
+        console.log(`[DEBUG] Test lobby: selected game ${gameId} does not match test game ${lobby.testGameId}`);
+        return callback?.({ error: 'Only the test game can be selected in a test lobby' });
+      }
+    }
+
+    let game = gameLoader.getGame(gameId);
+    
+    // If game not found, check if it's a creator's unapproved game or test game
+    if (!game) {
+      const Game = require('./models/Game');
+      const gameDoc = await Game.findOne({ id: gameId });
+      
+      if (gameDoc && gameDoc.creatorId && gameDoc.creatorId.equals(userId)) {
+        // Load creator's unapproved game for testing
+        console.log(`[DEBUG] Loading creator's unapproved game ${gameId} for testing`);
+        game = await gameLoader.loadCreatorGame(gameId, userId);
+      } else if (lobby.isTestLobby && lobby.testGamePath) {
+        // Load test game from custom path
+        console.log(`[DEBUG] Loading test game ${gameId} from path ${lobby.testGamePath}`);
+        game = await gameLoader.loadTestGame(gameId, lobby.testGamePath);
+      }
+    }
+    
     if (!game) {
       console.log(`[DEBUG] Game not found: ${gameId}`);
       return callback?.({ error: 'Game not found' });
     }
 
+    // Game is available (either approved or creator's own game)
+    console.log(`[DEBUG] Game ${gameId} is available`);
+
     console.log(`[DEBUG] Starting game: ${game.meta.name}`);
     lobby.gameId = gameId;
 
     try {
-      const api = makeApi(io.of('/lobby'), lobby);
-      console.log(`[DEBUG] Calling game.onInit for ${game.meta.name}`);
-      game.onInit(lobby, api);
+      // Spawn game process
+      console.log(`[DEBUG] Spawning game process for ${game.meta.name}`);
+      const testGamePath = lobby.isTestLobby ? lobby.testGamePath : null;
+      console.log(`[DEBUG] Test lobby: ${lobby.isTestLobby}, testGamePath: ${testGamePath}`);
+      const processInfo = await gameProcessManager.spawnGameProcess(code, gameId, lobby, io.of('/lobby'), testGamePath);
+      
+      console.log(`[DEBUG] Game process spawned: ${processInfo.processId}`);
 
       // Initialize all existing players for the game
       console.log(`[DEBUG] Initializing ${lobby.players.length} players for game`);
       lobby.players.forEach(player => {
         console.log(`[DEBUG] Adding player ${player.username} to game`);
-        game.onPlayerJoin(lobby, api, player);
+        gameProcessManager.playerJoin(code, player);
       });
 
       // Send different events to host vs players
@@ -511,7 +691,7 @@ io.of('/lobby').on('connection', socket => {
       callback?.({ success: true });
     } catch (error) {
       console.error(`[DEBUG] Error during game initialization:`, error);
-      callback?.({ error: 'Game initialization failed' });
+      callback?.({ error: 'Game initialization failed: ' + error.message });
     }
   });
 
@@ -520,12 +700,11 @@ io.of('/lobby').on('connection', socket => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
 
-    const game = gameLoader.getGame(lobby.gameId);
     const player = lobby.players.find(p => p.id === socket.id);
-    if (!game || !player) return;
+    if (!player) return;
 
-    const api = makeApi(io.of('/lobby'), lobby);
-    game.onAction(lobby, api, player, data);
+    // Forward action to game process
+    gameProcessManager.playerAction(code, player, data);
   });
 
   // End lobby
@@ -533,10 +712,9 @@ io.of('/lobby').on('connection', socket => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
 
-    const game = gameLoader.getGame(lobby.gameId);
-    if (game) {
-      const api = makeApi(io.of('/lobby'), lobby);
-      game.onEnd(lobby, api);
+    // Terminate game process if running
+    if (gameProcessManager.hasActiveProcess(code)) {
+      gameProcessManager.terminateProcess(code);
     }
 
     io.of('/lobby').to(code).emit('lobbyClosed');
@@ -578,6 +756,45 @@ io.of('/lobby').on('connection', socket => {
     // Update available games for host when players leave
     getAvailableGamesForLobby(lobby.playerIds).then(updatedGames => {
       io.of('/lobby').to(lobby.host).emit('gamesUpdated', updatedGames);
+    });
+  });
+
+  // Invite users to test lobby
+  socket.on('inviteToTestLobby', ({ lobbyCode, usernames }, callback) => {
+    console.log(`[DEBUG] inviteToTestLobby called: lobbyCode=${lobbyCode}, usernames=${usernames}`);
+    
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) {
+      return callback?.({ error: 'Lobby not found' });
+    }
+
+    // Verify this socket is the host of the test lobby
+    if (socket.id !== lobby.host || !lobby.isTestLobby) {
+      return callback?.({ error: 'Only the test lobby host can invite users' });
+    }
+
+    // Parse usernames (comma-separated)
+    const usernameList = usernames.split(',').map(name => name.trim()).filter(name => name.length > 0);
+    
+    if (usernameList.length === 0) {
+      return callback?.({ error: 'No valid usernames provided' });
+    }
+
+    // Add usernames to allowed list (avoid duplicates)
+    if (!lobby.allowedUsernames) {
+      lobby.allowedUsernames = [];
+    }
+    
+    const newUsernames = usernameList.filter(name => !lobby.allowedUsernames.includes(name));
+    lobby.allowedUsernames.push(...newUsernames);
+
+    console.log(`[DEBUG] Added ${newUsernames.length} users to test lobby ${lobbyCode}: ${newUsernames.join(', ')}`);
+
+    callback?.({
+      success: true,
+      message: `Invited ${newUsernames.length} users to test lobby`,
+      invitedUsernames: newUsernames,
+      allAllowedUsernames: lobby.allowedUsernames
     });
   });
 
@@ -650,6 +867,11 @@ io.of('/lobby').on('connection', socket => {
           console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby (no userId)`);
           lobby.players.splice(playerIndex, 1);
           
+          // Notify game process about player disconnect
+          if (gameProcessManager.hasActiveProcess(code)) {
+            gameProcessManager.playerDisconnect(code, removedPlayer.id);
+          }
+          
           // Update player list for remaining players and host
           io.of('/lobby').to(code).emit('playerListUpdate', lobby.players.map(p => p.username));
           
@@ -695,6 +917,36 @@ io.of('/lobby').on('connection', socket => {
   });
 });
 
+// Debug route to check loaded games
+app.get('/debug/loaded-games', (req, res) => {
+  try {
+    const loadedGames = gameLoader.getAllGameMetadata();
+    res.json({
+      success: true,
+      count: gameLoader.getLoadedGamesCount(),
+      games: loadedGames
+    });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// Debug route to reload all games
+app.get('/debug/reload-games', async (req, res) => {
+  try {
+    await gameLoader.initialize();
+    const loadedGames = gameLoader.getAllGameMetadata();
+    res.json({
+      success: true,
+      message: 'Games reloaded successfully',
+      count: gameLoader.getLoadedGamesCount(),
+      games: loadedGames
+    });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+});
+
 // Temporary route to add trivia game to user adam
 app.get('/add-trivia', async (req, res) => {
   try {
@@ -720,4 +972,17 @@ app.get('/add-trivia', async (req, res) => {
 // --- Start server ---
 server.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[Server] Received SIGTERM, shutting down gracefully');
+  gameProcessManager.cleanup();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('[Server] Received SIGINT, shutting down gracefully');
+  gameProcessManager.cleanup();
+  process.exit(0);
 });

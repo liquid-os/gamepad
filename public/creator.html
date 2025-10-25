@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Creator Dashboard - Party Game Hub</title>
+  <title>Creator Dashboard - BuddyBox.tv</title>
   <style>
     * {
       margin: 0;
@@ -13,7 +17,7 @@
     
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       min-height: 100vh;
     }
     
@@ -24,24 +28,80 @@
     }
     
     .header {
-      background: white;
+      background: #1B2A41;
       border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
       padding: 30px;
       margin-bottom: 30px;
       text-align: center;
     }
     
     .header h1 {
-      color: #333;
+      color: white;
       margin-bottom: 10px;
       font-size: 2.5em;
       font-weight: 300;
     }
     
     .header p {
-      color: #666;
+      color: #e9ecef;
       font-size: 1.1em;
+    }
+
+    .condiment-regular {
+      font-family: "Condiment", cursive;
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    .gg-header {
+      font-family: "Condiment", cursive;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 2.5em;
+      margin: 0;
+      transform: translateY(20%);
+    }
+
+    .platform-logo {
+      width: 20%;
+      object-fit: contain;
+      align-self: center;
+      animation: elasticPop 15s infinite ease-in-out;
+    }
+
+    @keyframes elasticPop {
+      0%, 90% {
+        transform: scale(1);
+      }
+      92% {
+        transform: scale(0.95);
+      }
+      94% {
+        transform: scale(1.05);
+      }
+      96% {
+        transform: scale(0.98);
+      }
+      98% {
+        transform: scale(1.02);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .platform-logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .pixel-text {
+      font-family: "Jersey 10", sans-serif;
+      font-weight: 400;
+      font-style: normal;
     }
     
     .nav-bar {
@@ -57,7 +117,8 @@
     .nav-btn {
       flex: 1;
       background: transparent;
-      border: none;
+      border: 2px solid #e9ecef;
+      color: #333;
       padding: 12px 20px;
       border-radius: 10px;
       cursor: pointer;
@@ -66,12 +127,15 @@
     }
     
     .nav-btn.active {
-      background: #007bff;
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       color: white;
+      border-color: #DA2359;
     }
     
     .nav-btn:hover:not(.active) {
       background: #f8f9fa;
+      border-color: #DA2359;
+      color: #DA2359;
     }
     
     .content-section {
@@ -108,6 +172,48 @@
       opacity: 0.9;
     }
     
+    .template-download-section {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .template-download-section p {
+      margin-bottom: 15px;
+      color: #495057;
+      font-size: 1rem;
+    }
+    
+    .template-download-btn {
+      background: #6c757d;
+      color: white;
+      text-decoration: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .template-download-btn:hover {
+      background: #5a6268;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+      text-decoration: none;
+      color: white;
+    }
+    
+    .template-info {
+      font-size: 0.9rem;
+      color: #6c757d;
+      font-style: italic;
+      margin-bottom: 0;
+    }
+
     .upload-area {
       border: 2px dashed #007bff;
       border-radius: 10px;
@@ -192,6 +298,19 @@
       border-radius: 10px;
       padding: 20px;
       border: 1px solid #e9ecef;
+      display: flex;
+      gap: 15px;
+    }
+
+    .game-logo-section {
+      flex-shrink: 0;
+    }
+
+    .game-logo {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 8px;
     }
     
     .game-header {
@@ -332,20 +451,131 @@
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       }
     }
+
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: white;
+      margin: 5% auto;
+      padding: 0 30px 30px 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      padding: 20px 30px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: #333;
+    }
+
+    .close {
+      color: #aaa;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #000;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding: 20px 30px;
+      border-top: 1px solid #eee;
+    }
+
+    /* Badge styles */
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin: 5px 0;
+    }
+
+    .badge-info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .badge-warning {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .badge-success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    /* Loading spinner styles */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #DA2359;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎮 Creator Dashboard</h1>
-      <p>Upload and manage your party games</p>
+      <div class="platform-logo-container">
+        <img src="logo.png" class="platform-logo" alt="BuddyBox.tv" class="logo">
+        <h1 class="gg-header"><b>BuddyBox.tv</b></h1>
+      </div>
+      <h2 style="color: white; margin-top: 20px; font-size: 2.5em;" class="pixel-text">Creator Dashboard</h2>
     </div>
 
     <div class="nav-bar">
-      <button class="nav-btn active" onclick="showSection('overview')">📊 Overview</button>
-      <button class="nav-btn" onclick="showSection('upload')">⬆️ Upload Game</button>
-      <button class="nav-btn" onclick="showSection('games')">🎯 My Games</button>
-      <button class="nav-btn" onclick="showSection('profile')">👤 Profile</button>
+      <button class="nav-btn active" onclick="showSection('overview')">Overview</button>
+      <button class="nav-btn" onclick="showSection('upload')">New Game</button>
+      <button class="nav-btn" onclick="showSection('games')">My Games</button>
+      <button class="nav-btn" onclick="showSection('profile')">Profile</button>
     </div>
 
     <!-- Overview Section -->
@@ -378,16 +608,25 @@
 
     <!-- Upload Section -->
     <div id="upload-section" class="content-section hidden">
-      <h2>Upload New Game</h2>
+      <h2>Create New Game</h2>
+      
+      <!-- Download Template Button -->
+      <div class="template-download-section">
+        <p>Need help getting started? Download our game template with all the required files and structure!</p>
+        <a href="/game-template.zip" download="game-template.zip" class="btn btn-secondary template-download-btn">
+          📥 Download Game Template
+        </a>
+        <p class="template-info">The template includes server.js, client files, and detailed documentation to help you create your game.</p>
+      </div>
       
       <div class="upload-area" id="upload-area">
-        <p>📁 Drag and drop your game ZIP file here, or click to browse</p>
+        <p>Drag and drop your game ZIP file here, or click to browse</p>
         <input type="file" id="game-file" accept=".zip" />
         <button class="upload-btn" onclick="document.getElementById('game-file').click()">
           Choose ZIP File
         </button>
         <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-          Maximum file size: 10MB
+          Maximum file size: 200MB
         </p>
       </div>
       
@@ -416,8 +655,8 @@
         
         <div class="form-row">
           <div class="form-group">
-            <label for="game-price">Price (coins)</label>
-            <input type="number" id="game-price" name="price" min="0" value="0" />
+            <label for="game-price">Price (USD)</label>
+            <input type="number" id="game-price" name="price" min="1.00" value="1.00" />
           </div>
           <div class="form-group">
             <label for="game-players">Players (min-max)</label>
@@ -429,7 +668,7 @@
         </div>
         
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">
-          Upload Game
+          Submit New Game
         </button>
       </form>
     </div>
@@ -451,11 +690,69 @@
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-      <a href="/" class="btn btn-secondary">🏠 Back to Home</a>
+      <a href="/" class="btn btn-secondary">Back to Home</a>
     </div>
-  </div>
+    </div>
 
-  <script>
+    <!-- Update Game Modal -->
+    <div id="updateModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Update Game</h2>
+          <span class="close" onclick="closeUpdateModal()">&times;</span>
+        </div>
+        <form id="updateGameForm">
+          <input type="hidden" id="updateGameId" />
+          
+          <div class="form-group">
+            <label for="updateDescription">Description</label>
+            <textarea id="updateDescription" name="description" rows="3" placeholder="Game description"></textarea>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="updateMinPlayers">Min Players</label>
+              <input type="number" id="updateMinPlayers" name="minPlayers" min="1" max="20" />
+            </div>
+            <div class="form-group">
+              <label for="updateMaxPlayers">Max Players</label>
+              <input type="number" id="updateMaxPlayers" name="maxPlayers" min="1" max="20" />
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="updatePrice">Price (USD)</label>
+              <input type="number" id="updatePrice" name="price" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            <div class="form-group">
+              <label for="updateCategory">Category</label>
+              <select id="updateCategory" name="category">
+                <option value="strategy">Strategy</option>
+                <option value="action">Action</option>
+                <option value="puzzle">Puzzle</option>
+                <option value="trivia">Trivia</option>
+                <option value="social">Social</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="updateGameFile">Game Code (ZIP file)</label>
+            <input type="file" id="updateGameFile" name="gameFile" accept=".zip" />
+            <small>Optional: Upload new game code to create an update</small>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Update Game</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
     let currentUser = null;
     let currentSection = 'overview';
 
@@ -540,20 +837,40 @@
       const statusClass = `status-${game.status}`;
       const statusText = game.status.charAt(0).toUpperCase() + game.status.slice(1);
       
+      // Get logo or fallback to default
+      const logoSrc = game.logo || '/game-logos/default-logo.png';
+      
+      let updateStatus = '';
+      if (game.hasPendingUpdate) {
+        if (game.submittedForApproval) {
+          updateStatus = '<span class="badge badge-warning">Update Submitted</span>';
+        } else {
+          updateStatus = '<span class="badge badge-info">Update Pending</span>';
+        }
+      }
+      
       return `
         <div class="game-card">
+          <div class="game-logo-section">
+            <img src="${logoSrc}" alt="${game.name}" class="game-logo">
+          </div>
           <div class="game-header">
             <div class="game-title">${game.name}</div>
             <div class="game-status ${statusClass}">${statusText}</div>
           </div>
           <p style="color: #666; margin: 10px 0;">${game.description}</p>
           <div class="game-stats">
-            <span>💰 ${game.price} coins</span>
-            <span>👥 ${game.minPlayers}-${game.maxPlayers}</span>
-            <span>📊 ${game.downloadCount} downloads</span>
+            <span>${game.price} USD</span>
+            <span>${game.minPlayers}-${game.maxPlayers}</span>
+            <span>${game.downloadCount} downloads</span>
           </div>
+          ${updateStatus}
           <div class="game-actions">
-            <button class="btn btn-primary" onclick="editGame('${game.id}')">Edit</button>
+            <button class="btn btn-primary" onclick="openUpdateModal('${game.id}')">Update Game</button>
+            <button class="btn btn-info" onclick="startTestLobby('${game.id}')">Start Test Lobby</button>
+            ${game.hasPendingUpdate && !game.submittedForApproval ? 
+              `<button class="btn btn-success" onclick="submitForApproval('${game.id}')">Submit for Approval</button>` : ''}
+            <button class="btn btn-secondary" onclick="editGame('${game.id}')">Edit</button>
             <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete</button>
           </div>
         </div>
@@ -683,6 +1000,7 @@
     // File upload handling
     const uploadArea = document.getElementById('upload-area');
     const fileInput = document.getElementById('game-file');
+    let selectedFile = null; // Store the selected file
 
     uploadArea.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -699,6 +1017,7 @@
       
       const files = e.dataTransfer.files;
       if (files.length > 0) {
+        selectedFile = files[0];
         fileInput.files = files;
         updateUploadArea(files[0]);
       }
@@ -706,6 +1025,7 @@
 
     fileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
         updateUploadArea(e.target.files[0]);
       }
     });
@@ -717,10 +1037,20 @@
         <p style="color: #666; font-size: 0.9em;">
           Size: ${(file.size / 1024 / 1024).toFixed(2)}MB
         </p>
+        <input type="file" id="game-file" accept=".zip" style="display: none;" />
         <button class="upload-btn" onclick="document.getElementById('game-file').click()">
           Change File
         </button>
       `;
+      
+      // Re-attach the file input event listener
+      const newFileInput = document.getElementById('game-file');
+      newFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          selectedFile = e.target.files[0];
+          updateUploadArea(e.target.files[0]);
+        }
+      });
     }
 
     // Game form submission
@@ -729,19 +1059,26 @@
     async function uploadGame(event) {
       event.preventDefault();
       
-      const fileInput = document.getElementById('game-file');
-      if (!fileInput.files[0]) {
+      if (!selectedFile) {
         showError('Please select a game file');
         return;
       }
       
+      // Get the submit button and add loading state
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      
+      // Disable button and show loading spinner
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Uploading...';
+      
       const formData = new FormData();
-      formData.append('gameFile', fileInput.files[0]);
+      formData.append('gameFile', selectedFile);
       
       const gameData = {
         name: document.getElementById('game-name').value,
         description: document.getElementById('game-description').value,
-        price: document.getElementById('game-price').value,
+        price: Math.round(parseFloat(document.getElementById('game-price').value) * 100), // Convert USD to cents
         minPlayers: document.getElementById('game-min-players').value,
         maxPlayers: document.getElementById('game-max-players').value,
         category: document.getElementById('game-category').value
@@ -767,10 +1104,25 @@
               Choose ZIP File
             </button>
             <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-              Maximum file size: 10MB
+              Maximum file size: 200MB
             </p>
           `;
+          
+          // Re-attach file input event listeners
+          const newFileInput = document.getElementById('game-file');
+          newFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+              selectedFile = e.target.files[0];
+              updateUploadArea(e.target.files[0]);
+            }
+          });
+          
           loadCreatorData();
+          
+          // Redirect to My Games tab to show the newly created game
+          setTimeout(() => {
+            showSection('games');
+          }, 1500);
         } else {
           showError(result.message);
           if (result.errors) {
@@ -780,6 +1132,10 @@
       } catch (error) {
         console.error('Upload error:', error);
         showError('Failed to upload game');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
       }
     }
 
@@ -836,6 +1192,165 @@
       setTimeout(() => {
         successDiv.remove();
       }, 5000);
+    }
+
+    // Update game modal functions
+    async function openUpdateModal(gameId) {
+      try {
+        const response = await fetch(`/api/creator/game/${gameId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const game = data.game;
+          document.getElementById('updateGameId').value = gameId;
+          document.getElementById('updateDescription').value = game.description || '';
+          document.getElementById('updateMinPlayers').value = game.minPlayers || 2;
+          document.getElementById('updateMaxPlayers').value = game.maxPlayers || 8;
+          document.getElementById('updatePrice').value = (game.price / 100).toFixed(2); // Convert cents to USD
+          document.getElementById('updateCategory').value = game.category || 'strategy';
+          
+          document.getElementById('updateModal').style.display = 'block';
+        } else {
+          showError('Failed to load game details');
+        }
+      } catch (error) {
+        console.error('Failed to load game:', error);
+        showError('Failed to load game details');
+      }
+    }
+
+    function closeUpdateModal() {
+      document.getElementById('updateModal').style.display = 'none';
+      document.getElementById('updateGameForm').reset();
+    }
+
+    // Handle update form submission
+    document.getElementById('updateGameForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Get the submit button and add loading state
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      
+      // Disable button and show loading spinner
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Updating...';
+      
+      const gameId = document.getElementById('updateGameId').value;
+      const formData = new FormData(e.target);
+      
+      try {
+        // If specifically uploading a new ZIP file, use the update endpoint
+        if (formData.get('gameFile') && formData.get('gameFile').size > 0) {
+          const response = await fetch(`/api/creator/game/${gameId}/update`, {
+            method: 'POST',
+            body: formData
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showSuccess('Game update uploaded successfully!');
+            closeUpdateModal();
+            loadMyGames();
+          } else {
+            showError(result.message);
+          }
+        } else {
+          // Just update metadata
+          const updateData = {
+            description: formData.get('description'),
+            minPlayers: parseInt(formData.get('minPlayers')),
+            maxPlayers: parseInt(formData.get('maxPlayers')),
+            price: Math.round(parseFloat(formData.get('price')) * 100), // Convert USD to cents
+            category: formData.get('category')
+          };
+          
+          const response = await fetch(`/api/creator/game/${gameId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showSuccess('Game updated successfully!');
+            closeUpdateModal();
+            loadMyGames();
+          } else {
+            showError(result.message);
+          }
+        }
+      } catch (error) {
+        console.error('Update error:', error);
+        showError('Failed to update game');
+      } finally {
+        // Reset button state
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    });
+
+    async function submitForApproval(gameId) {
+      try {
+        const response = await fetch(`/api/creator/game/${gameId}/submit`, {
+          method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Update submitted for approval successfully!');
+          loadMyGames();
+        } else {
+          showError(result.message);
+        }
+      } catch (error) {
+        console.error('Submit error:', error);
+        showError('Failed to submit for approval');
+      }
+    }
+
+    async function startTestLobby(gameId) {
+      try {
+        const response = await fetch(`/api/creator/game/${gameId}/test-lobby`, {
+          method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Test lobby created successfully!');
+          
+          // Store test lobby info in session storage
+          sessionStorage.setItem('testLobby', JSON.stringify({
+            code: result.lobby.code,
+            gameId: result.lobby.gameId,
+            testGamePath: result.lobby.testGamePath,
+            gameName: result.lobby.gameName,
+            hasPendingUpdate: result.lobby.hasPendingUpdate
+          }));
+          
+          // Redirect to host page
+          window.location.href = '/host.html';
+        } else {
+          showError(result.message);
+        }
+      } catch (error) {
+        console.error('Start test lobby error:', error);
+        showError('Failed to create test lobby');
+      }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('updateModal');
+      if (event.target == modal) {
+        closeUpdateModal();
+      }
     }
   </script>
 </body>

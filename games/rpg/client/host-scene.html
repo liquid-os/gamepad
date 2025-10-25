@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-op RPG Quest - Battle Scene</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Battle Scene Container */
+    .battle-scene {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background-image: url('/games/rpg/assets/backgrounds/forest.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* Fallback gradient background if image not found */
+    .battle-scene::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+      z-index: -1;
+    }
+
+    /* Dark overlay for better readability */
+    .battle-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+    }
+
+    /* Title Bar */
+    .title-bar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px 40px;
+      border-radius: 15px;
+      text-align: center;
+      z-index: 100;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .title-bar h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    .round-info {
+      font-size: 1.2em;
+      opacity: 0.9;
+    }
+
+    /* Sprite Container */
+    .sprite {
+      position: absolute;
+      transition: all 0.3s ease;
+      z-index: 10;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.8));
+    }
+
+    /* Breathing animation for idle sprites - only affects sprite image */
+    .sprite.idle img {
+      animation: breathe 3s ease-in-out infinite;
+    }
+
+    /* Disable breathing during combat animations */
+    .sprite.animating img {
+      animation: none;
+    }
+
+    @keyframes breathe {
+      0%, 100% {
+        transform: scale(var(--base-scale, 1));
+      }
+      50% {
+        transform: scale(calc(var(--base-scale, 1) * 1.05));
+      }
+    }
+    
+    /* Red flash animation for hurt state */
+    .sprite img[src*="_hurt"] {
+      animation: hurtFlash 0.5s ease-out;
+    }
+    
+    @keyframes hurtFlash {
+      0%, 100% {
+        filter: none;
+      }
+      25%, 75% {
+        filter: brightness(2) saturate(2) hue-rotate(320deg);
+      }
+      50% {
+        filter: brightness(1.5) saturate(1.5) hue-rotate(320deg);
+      }
+    }
+
+    /* Speed bounce animation */
+    .speed-bounce {
+      animation: speedBounce 0.6s ease-out;
+    }
+
+    @keyframes speedBounce {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); color: #ffd700; }
+      100% { transform: scale(1); }
+    }
+
+    /* Damage resistance icons */
+    .resistance-icon {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: rgba(255, 0, 0, 0.8);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      border: 2px solid white;
+      z-index: 20;
+    }
+
+    /* Special ability indicator */
+    .special-ability-indicator {
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      background: rgba(255, 165, 0, 0.9);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      border: 2px solid white;
+      z-index: 20;
+      animation: pulseWarning 1s ease-in-out infinite;
+    }
+
+    @keyframes pulseWarning {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 5px rgba(255, 165, 0, 0.5);
+      }
+      50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(255, 165, 0, 0.8);
+      }
+    }
+
+    /* Charging sprite lock */
+    .sprite.charging {
+      filter: brightness(1.2);
+    }
+
+    .sprite img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Sprite sizes based on position */
+    .sprite.player {
+      width: 180px;
+      height: 180px;
+    }
+
+    .sprite.enemy {
+      width: 200px;
+      height: 200px;
+    }
+
+    /* Health bar above sprite */
+    .health-bar-container {
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 150px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 10px;
+      padding: 4px;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .health-bar {
+      height: 15px;
+      background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 8px;
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .health-bar.low {
+      background: linear-gradient(90deg, #eab308 0%, #ca8a04 100%);
+    }
+
+    .health-bar.critical {
+      background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .health-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+      white-space: nowrap;
+    }
+
+    /* Name tag - now above health bar, no container */
+    .name-tag {
+      position: absolute;
+      top: -65px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      white-space: nowrap;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+    }
+
+    /* Stats badge - next to name, no container */
+    .stats-badge {
+      position: absolute;
+      top: -65px;
+      left: 50%;
+      transform: translateX(calc(-50% + 80px)); /* Offset to the right of name */
+      color: white;
+      font-size: 12px;
+      white-space: nowrap;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+    }
+
+    /* Status Effects Display - above health bar */
+    .status-effects {
+      position: absolute;
+      top: -65px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 15;
+    }
+
+    .status-effect-icon {
+      background: rgba(0, 0, 0, 0.9);
+      border: 2px solid;
+      border-radius: 8px;
+      padding: 3px 6px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .status-duration {
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+    }
+
+    /* Projectile animation */
+    .projectile {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      z-index: 50;
+      pointer-events: none;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.8));
+    }
+
+    .projectile img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Effect overlay (for spells hitting target) */
+    .effect-overlay {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      z-index: 60;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2s ease-out;
+    }
+
+    .effect-overlay img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .effect-overlay.show {
+      opacity: 1;
+    }
+
+    /* Impact GIF overlay */
+    .impact-overlay {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      z-index: 65;
+      pointer-events: none;
+    }
+
+    .impact-overlay img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Shake animation for damage */
+    @keyframes shake {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5px, -5px); }
+      20% { transform: translate(5px, 5px); }
+      30% { transform: translate(-5px, 5px); }
+      40% { transform: translate(5px, -5px); }
+      50% { transform: translate(-5px, -5px); }
+      60% { transform: translate(5px, 5px); }
+      70% { transform: translate(-5px, 5px); }
+      80% { transform: translate(5px, -5px); }
+      90% { transform: translate(-5px, 0); }
+    }
+
+    .sprite.damage {
+      animation: shake 0.5s;
+    }
+
+    /* Action Popup Display */
+    .action-popup {
+      position: absolute;
+      bottom: 150px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      z-index: 90;
+      pointer-events: none;
+      opacity: 0;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.9);
+    }
+
+    .action-popup.show {
+      animation: actionPopup 2.5s ease-out forwards;
+    }
+
+    .action-actor {
+      font-size: 3em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .action-actor.hero {
+      color: #22c55e;
+    }
+
+    .action-actor.enemy {
+      color: #ef4444;
+    }
+
+    .action-verb {
+      font-size: 1.5em;
+      color: white;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+
+    .action-name {
+      font-size: 3em;
+      font-weight: bold;
+      color: #fbbf24;
+    }
+
+    @keyframes actionPopup {
+      0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(0);
+      }
+      15% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-20px);
+      }
+      85% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-40px);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-60px);
+      }
+    }
+
+    /* Turn indicator */
+    .turn-indicator {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(251, 191, 36, 0.9);
+      color: #000;
+      padding: 10px 30px;
+      border-radius: 25px;
+      font-size: 1.3em;
+      font-weight: bold;
+      z-index: 80;
+      display: none;
+      animation: pulse 1s ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.1); }
+    }
+
+    /* Turn Order Display */
+    .turn-order-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.95);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 30px;
+      min-width: 400px;
+      max-width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      z-index: 200;
+      color: white;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      transition: opacity 0.5s ease-out;
+    }
+
+    .turn-order-display.fade-out {
+      opacity: 0;
+    }
+
+    .turn-order-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .turn-order-item {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.3s ease;
+      margin-bottom: 4px;
+    }
+
+    .turn-order-item.player {
+      border-color: rgba(34, 197, 94, 0.5);
+      background: rgba(34, 197, 94, 0.15);
+    }
+
+    .turn-order-item.enemy {
+      border-color: rgba(239, 68, 68, 0.5);
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .turn-order-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .turn-order-rank {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #fbbf24;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .turn-order-name {
+      font-size: 1.1em;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .turn-order-class {
+      font-size: 0.8em;
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+
+    .turn-order-speed {
+      font-size: 1.0em;
+      color: #60a5fa;
+      font-weight: bold;
+    }
+
+    .special-ability-badge {
+      background: rgba(251, 191, 36, 0.3);
+      border: 1px solid #fbbf24;
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 0.75em;
+      color: #fbbf24;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 10px;
+    }
+
+    /* Floating Combat Text */
+    .floating-text {
+      position: absolute;
+      font-weight: bold;
+      font-size: 2em;
+      pointer-events: none;
+      z-index: 70;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+      animation: floatUp 2s ease-out forwards;
+    }
+
+    .floating-text.damage {
+      color: #ef4444;
+    }
+
+    .floating-text.heal {
+      color: #22c55e;
+    }
+
+    .floating-text.miss {
+      color: white;
+      font-style: italic;
+    }
+
+    .floating-text.crit {
+      font-size: 3em;
+      color: #f59e0b;
+      animation: floatUpCrit 2s ease-out forwards, shakeCrit 0.5s ease-in-out;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+      }
+      20% {
+        transform: translateY(-30px) scale(1.5);
+        opacity: 1;
+      }
+      40% {
+        transform: translateY(-60px) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-150px) scale(0.8);
+        opacity: 0;
+      }
+    }
+
+    @keyframes floatUpCrit {
+      0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 0;
+      }
+      20% {
+        transform: translateY(-40px) scale(1.8);
+        opacity: 1;
+      }
+      40% {
+        transform: translateY(-80px) scale(1.3);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-180px) scale(1);
+        opacity: 0;
+      }
+    }
+
+    @keyframes shakeCrit {
+      0%, 100% { margin-left: 0; }
+      10% { margin-left: -8px; }
+      20% { margin-left: 8px; }
+      30% { margin-left: -8px; }
+      40% { margin-left: 8px; }
+      50% { margin-left: -8px; }
+      60% { margin-left: 8px; }
+      70% { margin-left: -4px; }
+      80% { margin-left: 4px; }
+      90% { margin-left: -2px; }
+    }
+
+    @keyframes customMessageFade {
+      0% { 
+        opacity: 0; 
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      20% { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1);
+      }
+      80% { 
+        opacity: 1; 
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% { 
+        opacity: 0; 
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+    }
+
+    /* Class Selection Overlay */
+    .class-selection-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    /* Pick a Path Overlay Background */
+    #pickAPathScene {
+      background-image: url('/games/rpg/assets/backgrounds/pickapath.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    #pickAPathScene::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: -1;
+    }
+
+    /* Skill Learning Overlay Background */
+    #skillLearningScene {
+      background-image: url('/games/rpg/assets/backgrounds/skill.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    #skillLearningScene::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: -1;
+    }
+
+    /* Talent Learning Overlay Background */
+    #talentLearningScene {
+      background-image: url('/games/rpg/assets/backgrounds/talent.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    #talentLearningScene::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: -1;
+    }
+
+    .class-selection-overlay h1 {
+      font-size: 3em;
+      margin-bottom: 40px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 250px);
+      gap: 20px;
+    }
+
+    .class-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .class-card.selected {
+      background: rgba(34, 197, 94, 0.3);
+      border-color: #22c55e;
+      box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+    }
+
+    .class-icon {
+      font-size: 5em;
+      margin-bottom: 15px;
+    }
+
+    .class-name {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .class-stats {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .player-name {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+      color: #22c55e;
+      font-size: 1.1em;
+    }
+  </style>
+</head>
+<body>
+  <!-- Class Selection Phase -->
+  <div id="classSelection" class="class-selection-overlay">
+    <h1>Heroes Assembling...</h1>
+    <div id="classGrid" class="class-grid"></div>
+  </div>
+
+  <!-- Pick a Path Phase -->
+  <div id="pickAPathScene" class="class-selection-overlay" style="display: none;">
+    <h1 style="margin-bottom: 40px;">🗺️ Choose Your Path</h1>
+    <p style="font-size: 1.5em; margin-bottom: 40px; opacity: 0.9;">The party must decide which path to take...</p>
+    
+    <div style="display: flex; gap: 40px; justify-content: center; align-items: stretch; max-width: 1400px; margin: 0 auto;">
+      <div style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 3em; margin-bottom: 20px;">⬅️ Go Left</h2>
+        <p id="leftPathDesc" style="font-size: 1.3em; line-height: 1.8; text-align: center; flex: 1; display: flex; align-items: center;"></p>
+        <div style="margin-top: 20px; font-size: 1.3em; opacity: 0.9;">
+          Votes: <span id="leftVotes" style="font-weight: bold; color: #22c55e;">0</span>
+        </div>
+      </div>
+      
+      <div style="flex: 1; background: rgba(0, 0, 0, 0.5); border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 3em; margin-bottom: 20px;">Go Right ➡️</h2>
+        <p id="rightPathDesc" style="font-size: 1.3em; line-height: 1.8; text-align: center; flex: 1; display: flex; align-items: center;"></p>
+        <div style="margin-top: 20px; font-size: 1.3em; opacity: 0.9;">
+          Votes: <span id="rightVotes" style="font-weight: bold; color: #22c55e;">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Battle Scene -->
+  <div id="battleScene" class="battle-scene" style="display: none;">
+    <div class="battle-overlay"></div>
+    
+    <!-- Title Bar -->
+    <div class="title-bar">
+      <h1 id="encounterTitle">Combat Encounter</h1>
+      <div class="round-info" id="roundInfo">Round 1</div>
+    </div>
+
+    <!-- Turn Indicator -->
+    <div id="turnIndicator" class="turn-indicator"></div>
+
+    <!-- Turn Order Display (shown during action selection) -->
+    <div id="turnOrderDisplay" class="turn-order-display" style="display: none;">
+      <h2 style="margin-bottom: 20px; text-align: center;">Turn Order</h2>
+      <div id="turnOrderList" class="turn-order-list"></div>
+    </div>
+
+    <!-- Sprites will be dynamically added here -->
+    <div id="spritesContainer"></div>
+
+    <!-- Action Popup -->
+    <div id="actionPopup" class="action-popup">
+      <div class="action-actor" id="actionActor"></div>
+      <div class="action-verb" id="actionVerb">used</div>
+      <div class="action-name" id="actionName"></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="host-scene.js"></script>
+</body>
+</html>
+

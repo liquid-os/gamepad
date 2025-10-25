@@ -1,0 +1,10 @@
+{
+  "id": "rpg",
+  "name": "Co-op RPG Quest",
+  "description": "Team up with friends in an epic RPG adventure! Choose your class, battle enemies, and conquer challenges together.",
+  "minPlayers": 2,
+  "maxPlayers": 8,
+  "category": "rpg",
+  "thumbnail": "/games/rpg/assets/thumbnail.png"
+}
+

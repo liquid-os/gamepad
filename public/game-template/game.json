@@ -1,0 +1,12 @@
+{
+  "id": "your-game-id",
+  "name": "Your Game Name",
+  "description": "A brief description of your game",
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "category": "strategy",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "entryServer": "server.js",
+  "entryClient": "client/index.html"
+}

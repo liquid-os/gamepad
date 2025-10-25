@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camp Scene</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #campScene {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('/games/rpg/assets/backgrounds/camp.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #campfire {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 340px;
+            height: 400px;
+            z-index: 5;
+        }
+
+        #spritesContainer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .sprite {
+            position: absolute;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .sprite img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .sprite .name-tag {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .sprite .health-container {
+            position: absolute;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120%;
+        }
+
+        .health-container-camp {
+            position: absolute;
+            top: 0px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+        }
+
+        .sprite .health-bar-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .sprite .health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .sprite .health-bar.low {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+        }
+
+        .sprite .health-bar.critical {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
+        }
+
+        .sprite .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        #roundInfo {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 100;
+        }
+
+        #actionPopup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            font-size: 20px;
+            z-index: 200;
+            min-width: 400px;
+            text-align: center;
+            display: none;
+            border: 3px solid #ffd700;
+        }
+
+        #actionPopup .action-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+
+        #actionPopup .action-effects {
+            font-size: 18px;
+            margin-top: 10px;
+            color: #10b981;
+        }
+
+        .floating-text {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+            z-index: 1000;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .floating-text.heal {
+            color: #10b981;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="campScene">
+        <div id="roundInfo">Camp - Round 1/3</div>
+        <img id="campfire" src="/games/rpg/assets/campfire.gif" alt="Campfire" onerror="this.style.display='none';">
+        <div id="spritesContainer"></div>
+        <div id="actionPopup">
+            <div class="action-name" id="actionName"></div>
+            <div id="actionPlayer"></div>
+            <div class="action-effects" id="actionEffects"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let gameState = {
+            phase: null,
+            players: [],
+            sprites: {}
+        };
+
+        // Get socket from parent window
+        if (window.parent && window.parent !== window) {
+            socket = window.parent.socket;
+        }
+
+        if (!socket) {
+            console.error('No socket connection available');
+        } else {
+            console.log('Camp scene initialized with socket');
+        }
+
+        // Expose socket for potential child iframes
+        window.socket = socket;
+
+        const spritesContainer = document.getElementById('spritesContainer');
+        const roundInfo = document.getElementById('roundInfo');
+        const actionPopup = document.getElementById('actionPopup');
+
+        function initializeCampScene(data) {
+            console.log('[CAMP SCENE] Initializing:', data);
+            
+            gameState.phase = 'camp';
+            gameState.players = data.players || [];
+            
+            roundInfo.textContent = `Camp - Round ${data.round}/${data.maxRounds}`;
+            
+            // Clear previous sprites
+            spritesContainer.innerHTML = '';
+            gameState.sprites = {};
+            
+            // Create player sprites in a circle around the campfire
+            if (data.players) {
+                const numPlayers = data.players.length;
+                const radius = 200; // Distance from campfire
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2 + 180; // Slightly below center
+                
+                data.players.forEach((player, index) => {
+                    const angle = (index / numPlayers) * Math.PI * 2 - Math.PI / 2; // Start from top
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    const sprite = createSprite(player, x, y);
+                    gameState.sprites[player.id] = sprite;
+                });
+            }
+        }
+
+        function createSprite(player, x, y) {
+            const sprite = document.createElement('div');
+            sprite.className = 'sprite';
+            sprite.id = `sprite-${player.id}`;
+            sprite.style.left = `${x}px`;
+            sprite.style.top = `${y}px`;
+            sprite.style.width = '352px';
+            sprite.style.height = '405px';
+            sprite.style.transform = 'translate(-50%, -50%)';
+            
+            // Name tag (first - at top)
+            const nameTag = document.createElement('div');
+            nameTag.className = 'name-tag';
+            nameTag.textContent = player.username;
+            sprite.appendChild(nameTag);
+            
+            // Health bar (second - below name)
+            const healthContainer = document.createElement('div');
+            healthContainer.className = 'health-container-camp';
+            
+            const healthBarContainer = document.createElement('div');
+            healthBarContainer.className = 'health-bar-container';
+            
+            const healthBar = document.createElement('div');
+            healthBar.className = 'health-bar';
+            const percentage = (player.health / player.maxHealth) * 100;
+            healthBar.style.width = percentage + '%';
+            
+            if (percentage <= 30) healthBar.classList.add('critical');
+            else if (percentage <= 60) healthBar.classList.add('low');
+            
+            const healthText = document.createElement('div');
+            healthText.className = 'health-text';
+            healthText.textContent = `${player.health}/${player.maxHealth}`;
+            
+            healthBarContainer.appendChild(healthBar);
+            healthBarContainer.appendChild(healthText);
+            healthContainer.appendChild(healthBarContainer);
+            sprite.appendChild(healthContainer);
+            
+            // Character image (third - below health bar)
+            const img = document.createElement('img');
+            img.src = `/games/rpg/assets/sprites/${player.class}_idle.png`;
+            img.onerror = () => {
+                img.style.display = 'none';
+                sprite.innerHTML += `<div style="font-size: 60px;">${getClassEmoji(player.class)}</div>`;
+            };
+            sprite.appendChild(img);
+            
+            spritesContainer.appendChild(sprite);
+            return sprite;
+        }
+
+        function getClassEmoji(className) {
+            const emojis = {
+                knight: '🛡️',
+                archer: '🏹',
+                wizard: '🧙',
+                cleric: '✨',
+                rogue: '🗡️',
+                druid: '🌿',
+                barbarian: '⚔️',
+                warlock: '🔮'
+            };
+            return emojis[className] || '⚔️';
+        }
+
+        function updateCampScene(data) {
+            console.log('[CAMP SCENE] Updating:', data);
+            
+            if (data.round) {
+                roundInfo.textContent = `Camp - Round ${data.round}/${data.maxRounds}`;
+            }
+            
+            // Update player health bars
+            if (data.players) {
+                data.players.forEach(player => {
+                    updatePlayerHealth(player.id, player.health, player.maxHealth);
+                });
+            }
+        }
+
+        function updatePlayerHealth(playerId, health, maxHealth) {
+            const sprite = document.getElementById(`sprite-${playerId}`);
+            if (!sprite) return;
+            
+            const healthBar = sprite.querySelector('.health-bar');
+            const healthText = sprite.querySelector('.health-text');
+            
+            if (healthBar && healthText) {
+                const percentage = (health / maxHealth) * 100;
+                healthBar.style.width = percentage + '%';
+                healthText.textContent = `${health}/${maxHealth}`;
+                
+                healthBar.className = 'health-bar';
+                if (percentage <= 30) healthBar.classList.add('critical');
+                else if (percentage <= 60) healthBar.classList.add('low');
+            }
+        }
+
+        function showCampAction(data) {
+            console.log('[CAMP SCENE] Showing action:', data);
+            
+            document.getElementById('actionName').textContent = data.actionName;
+            document.getElementById('actionPlayer').textContent = data.playerName;
+            document.getElementById('actionEffects').textContent = data.effects.join(', ');
+            
+            actionPopup.style.display = 'block';
+            
+            // Show floating text on sprite
+            const sprite = document.getElementById(`sprite-${data.playerId}`);
+            if (sprite) {
+                data.effects.forEach((effect, index) => {
+                    setTimeout(() => {
+                        showFloatingText(sprite, effect, 'heal');
+                    }, index * 300);
+                });
+            }
+            
+            setTimeout(() => {
+                actionPopup.style.display = 'none';
+            }, 1500);
+        }
+
+        function showFloatingText(sprite, text, type) {
+            const floatingText = document.createElement('div');
+            floatingText.className = `floating-text ${type}`;
+            floatingText.textContent = text;
+            
+            const rect = sprite.getBoundingClientRect();
+            floatingText.style.left = `${rect.left + rect.width / 2}px`;
+            floatingText.style.top = `${rect.top}px`;
+            
+            document.body.appendChild(floatingText);
+            
+            setTimeout(() => {
+                floatingText.remove();
+            }, 2000);
+        }
+
+        // Socket listeners
+        if (socket) {
+            socket.on('animateCampAction', (data) => {
+                showCampAction(data);
+            });
+        }
+    </script>
+</body>
+</html>
+

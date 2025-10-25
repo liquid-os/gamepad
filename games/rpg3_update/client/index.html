@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-op RPG Quest - Player</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- NEW: Sticky Top Tab Bar -->
+  <div id="stickyTabBar" class="sticky-tab-bar" style="display: none;">
+    <button class="sticky-tab-btn active" data-tab="0">
+      <span class="sticky-tab-icon">⚔️</span>
+      <span class="sticky-tab-label">Combat</span>
+    </button>
+    <button class="sticky-tab-btn" data-tab="1">
+      <span class="sticky-tab-icon">🎒</span>
+      <span class="sticky-tab-label">Inventory</span>
+    </button>
+  </div>
+
+  <div id="app">
+    <!-- Class Selection Phase -->
+    <div id="classSelection" class="phase">
+      <h1>Choose Your Class</h1>
+      <p class="subtitle">Select your hero for this adventure</p>
+      
+      <div id="classList" class="class-grid">
+        <!-- Classes will be populated here -->
+      </div>
+
+      <div id="selectedClass" class="selected-display" style="display: none;">
+        <h3>You selected: <span id="yourClassName"></span></h3>
+        <p>Waiting for other players...</p>
+      </div>
+    </div>
+
+    <!-- Combat Phase -->
+    <div id="combat" class="phase" style="display: none;">
+      <div class="status-bar">
+        <div class="player-info">
+          <div class="class-name" id="playerClassName"></div>
+          <div class="health-display">
+            <div class="health-bar-container">
+              <div class="health-bar" id="playerHealthBar"></div>
+            </div>
+            <div class="health-text" id="playerHealthText">100/100</div>
+          </div>
+          
+          <!-- Status Effects Display -->
+          <div id="playerStatusEffects" class="player-status-effects"></div>
+        </div>
+      </div>
+
+      <div id="combatStatus" class="combat-status">
+        <h2 id="combatMessage">Combat Starting...</h2>
+        <div id="turnInfo" class="turn-info"></div>
+      </div>
+
+      <!-- Tabs: Desktop headers -->
+      <div id="tabContainer" class="tab-container">
+        <div id="tabHeaders" class="tab-headers">
+          <button id="combatTab" class="tab-header active">Combat</button>
+          <button id="inventoryTab" class="tab-header">Inventory</button>
+        </div>
+
+        <div id="tabContent" class="tab-content">
+          <!-- Combat Tab Content -->
+          <div id="combatTabContent" class="tab-pane active">
+            <!-- Action Selection -->
+            <div id="actionSelection" class="action-section" style="display: none;">
+              <h3>Choose Your Action</h3>
+              <div id="actionButtons" class="action-grid">
+                <!-- Action buttons will be populated here -->
+              </div>
+            </div>
+
+            <!-- Target Selection -->
+            <div id="targetSelection" class="target-section" style="display: none;">
+              <h3>Select Target</h3>
+              <div id="targetButtons" class="target-grid">
+                <!-- Target buttons will be populated here -->
+              </div>
+            </div>
+
+            <!-- Waiting State -->
+            <div id="waitingState" class="waiting-state" style="display: none;">
+              <div class="spinner"></div>
+              <p id="waitingMessage">Waiting for other players...</p>
+            </div>
+          </div>
+
+          <!-- Inventory Tab Content -->
+          <div id="inventoryTabContent" class="tab-pane">
+            <div class="inventory-sections">
+              <div id="statsSection" class="inventory-section">
+                <h3>Character Stats</h3>
+                <div id="statsList"></div>
+              </div>
+
+              <div id="talentsSection" class="inventory-section">
+                <h3>Talents</h3>
+                <div id="talentsList"></div>
+              </div>
+
+              <div id="inventorySection" class="inventory-section">
+                <h3>Inventory</h3>
+                <div id="inventoryList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Victory/Defeat Screen -->
+    <div id="gameEnd" class="phase" style="display: none;">
+      <div class="end-screen">
+        <h1 id="endTitle"></h1>
+        <p id="endMessage"></p>
+        <div id="endStats"></div>
+      </div>
+    </div>
+
+    <!-- Skill Learning Phase -->
+    <div id="skillLearning" class="phase" style="display: none;">
+      <h1>📚 Learn New Skill</h1>
+      <p class="subtitle">Choose a new ability to add to your arsenal</p>
+      
+      <div id="skillOptions" class="action-grid">
+        <!-- Skill options will be populated here -->
+      </div>
+
+      <div id="skillSelected" class="selected-display" style="display: none;">
+        <h3>You learned: <span id="learnedSkillName"></span></h3>
+        <p>Waiting for other players...</p>
+      </div>
+    </div>
+
+    <!-- Talent Learning Phase -->
+    <div id="talentLearning" class="phase" style="display: none;">
+      <h1>Choose Your Talent</h1>
+      <p class="subtitle">Select an upgrade for your class</p>
+      
+      <div id="talentOptions" class="action-grid">
+        <!-- Talent options will be populated here -->
+      </div>
+
+      <div id="talentSelected" class="selected-display" style="display: none;">
+        <h3>You chose: <span id="learnedTalentName"></span></h3>
+        <p>Waiting for other players...</p>
+      </div>
+    </div>
+
+    <!-- Pick a Path Phase -->
+    <div id="pickAPath" class="phase" style="display: none;">
+      <h1>🗺️ Choose Your Path</h1>
+      <p class="subtitle">The party must decide which path to take...</p>
+      
+      <div class="path-options">
+        <div class="path-option" id="leftPathOption">
+          <h2>⬅️ Go Left</h2>
+          <p id="leftPathDescription" class="path-description"></p>
+          <button id="leftPathButton" class="action-btn">Choose Left Path</button>
+        </div>
+        
+        <div class="path-option" id="rightPathOption">
+          <h2>Go Right ➡️</h2>
+          <p id="rightPathDescription" class="path-description"></p>
+          <button id="rightPathButton" class="action-btn">Choose Right Path</button>
+        </div>
+      </div>
+
+      <div id="pathVoteConfirmed" class="selected-display" style="display: none;">
+        <h3>You voted for: <span id="votedPathName"></span></h3>
+        <p>Waiting for other players to vote...</p>
+      </div>
+    </div>
+
+    <!-- Mobile tab navigation - outside phases so fixed positioning works -->
+    <div id="mobileTabNav" class="mobile-tab-nav">
+      <button class="mobile-tab-btn active" data-tab="0">
+        <span class="tab-icon">⚔️</span>
+        <span class="tab-label">Combat</span>
+      </button>
+      <button class="mobile-tab-btn" data-tab="1">
+        <span class="tab-icon">🎒</span>
+        <span class="tab-label">Inventory</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
+

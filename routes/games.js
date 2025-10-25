@@ -7,14 +7,14 @@ const router = express.Router();
 // Get all available games with search, filter, and sort
 router.get('/store', requireAuth, async (req, res) => {
   try {
-    const { search, category, sortBy } = req.query;
+    const { search, category, sortBy, showOwned } = req.query;
     const user = await User.findById(req.session.userId);
     
     // Use the searchGames static method
     const games = await Game.searchGames(search, category, sortBy);
     
-    // Add ownership status to each game
-    const gamesWithOwnership = games.map(game => {
+    // Add ownership status to each game (no coin affordability check)
+    let gamesWithOwnership = games.map(game => {
       const isOwned = user.ownedGames.some(owned => owned.gameId === game.id);
       const isFree = user.freeGames.some(free => free.gameId === game.id);
       const isAccessible = isOwned || isFree;
@@ -23,15 +23,18 @@ router.get('/store', requireAuth, async (req, res) => {
         ...game.toObject(),
         owned: isOwned,
         free: isFree,
-        accessible: isAccessible,
-        canAfford: user.coins >= game.price
+        accessible: isAccessible
       };
     });
 
+    // Filter out owned games if showOwned is not true
+    if (showOwned !== 'true') {
+      gamesWithOwnership = gamesWithOwnership.filter(game => !game.owned);
+    }
+
     res.json({
       success: true,
-      games: gamesWithOwnership,
-      userCoins: user.coins
+      games: gamesWithOwnership
     });
   } catch (error) {
     console.error('Get games error:', error);
@@ -42,23 +45,20 @@ router.get('/store', requireAuth, async (req, res) => {
   }
 });
 
-// Purchase a game
+// Purchase a game (deprecated - use Stripe checkout instead)
 router.post('/purchase/:gameId', requireAuth, async (req, res) => {
+  res.status(410).json({
+    success: false,
+    message: 'Coin purchases are no longer supported. Please use Stripe checkout.'
+  });
+});
+
+// Get user's library (owned + free games)
+router.get('/library', requireAuth, async (req, res) => {
   try {
-    const { gameId } = req.params;
-    const userId = req.session.userId;
-
-    // Get game details
-    const game = await Game.findOne({ id: gameId, isActive: true });
-    if (!game) {
-      return res.status(404).json({
-        success: false,
-        message: 'Game not found'
-      });
-    }
-
-    // Get user
-    const user = await User.findById(userId);
+    const { search, category, sortBy } = req.query;
+    const user = await User.findById(req.session.userId);
+    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -66,58 +66,93 @@ router.post('/purchase/:gameId', requireAuth, async (req, res) => {
       });
     }
 
-    // Check if already owned
-    if (user.ownedGames.some(owned => owned.gameId === gameId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'You already own this game'
+    // Get all accessible game IDs (owned + free)
+    const accessibleGameIds = user.getAllAccessibleGames();
+    
+    if (accessibleGameIds.length === 0) {
+      return res.json({
+        success: true,
+        games: []
       });
     }
 
-    // Check if user has enough coins
-    if (user.coins < game.price) {
-      return res.status(400).json({
-        success: false,
-        message: 'Not enough coins to purchase this game'
-      });
+    // Build query for accessible games
+    let query = { 
+      id: { $in: accessibleGameIds },
+      isActive: true 
+    };
+
+    // Add search filter
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { searchKeywords: { $in: [new RegExp(search, 'i')] } }
+      ];
     }
 
-    // Purchase the game
-    user.coins -= game.price;
-    user.ownedGames.push({
-      gameId: gameId,
-      purchasedAt: new Date()
+    // Add category filter
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    // Get games with filters
+    let games = await Game.find(query);
+
+    // Add ownership status to each game
+    const gamesWithOwnership = games.map(game => {
+      const isOwned = user.ownedGames.some(owned => owned.gameId === game.id);
+      const isFree = user.freeGames.some(free => free.gameId === game.id);
+      
+      return {
+        ...game.toObject(),
+        owned: isOwned,
+        free: isFree,
+        accessible: true // All games in library are accessible
+      };
     });
 
-    await user.save();
+    // Sort games
+    if (sortBy) {
+      switch (sortBy) {
+        case 'name':
+          gamesWithOwnership.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+        case 'newest':
+          gamesWithOwnership.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'rating':
+          gamesWithOwnership.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+          break;
+        case 'category':
+          gamesWithOwnership.sort((a, b) => a.category.localeCompare(b.category));
+          break;
+        default:
+          gamesWithOwnership.sort((a, b) => a.name.localeCompare(b.name));
+      }
+    }
 
     res.json({
       success: true,
-      message: 'Game purchased successfully',
-      user: {
-        coins: user.coins,
-        ownedGames: user.ownedGames
-      }
+      games: gamesWithOwnership
     });
-
   } catch (error) {
-    console.error('Purchase game error:', error);
+    console.error('Get library games error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to purchase game'
+      message: 'Failed to get library games'
     });
   }
 });
 
-// Get user's owned games
+// Get user's owned games (legacy endpoint)
 router.get('/owned', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId).populate('ownedGames.gameId');
     
     res.json({
       success: true,
-      ownedGames: user.ownedGames,
-      coins: user.coins
+      ownedGames: user.ownedGames
     });
   } catch (error) {
     console.error('Get owned games error:', error);

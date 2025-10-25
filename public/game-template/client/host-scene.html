@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Game Name - Host Display</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            margin: 0;
+            padding: 20px;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .host-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .host-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .host-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .host-header .game-phase {
+            font-size: 1.2rem;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .host-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .players-panel, .game-status-panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #e2e8f0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .player-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .player-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .player-score {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        
+        .game-status {
+            text-align: center;
+        }
+        
+        .status-message {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #a0aec0;
+        }
+        
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .host-messages {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .message {
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        
+        .message.info {
+            background: rgba(102, 126, 234, 0.2);
+            border-left: 4px solid #667eea;
+        }
+        
+        .message.success {
+            background: rgba(72, 187, 120, 0.2);
+            border-left: 4px solid #48bb78;
+        }
+        
+        .message.error {
+            background: rgba(245, 101, 101, 0.2);
+            border-left: 4px solid #f56565;
+        }
+        
+        @media (max-width: 768px) {
+            .host-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .host-header h1 {
+                font-size: 2rem;
+            }
+            
+            .game-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="host-container">
+        <div class="host-header">
+            <h1>Your Game Name</h1>
+            <div class="game-phase" id="gamePhase">Waiting for Players</div>
+        </div>
+        
+        <div class="host-content">
+            <div class="players-panel">
+                <h2 class="panel-title">Players</h2>
+                <div class="player-list" id="playerList">
+                    <div class="no-players">No players joined yet</div>
+                </div>
+            </div>
+            
+            <div class="game-status-panel">
+                <h2 class="panel-title">Game Status</h2>
+                <div class="game-status">
+                    <div class="status-message" id="statusMessage">Waiting for players to join...</div>
+                    <div class="game-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="playerCount">0</div>
+                            <div class="stat-label">Players</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="gameRound">0</div>
+                            <div class="stat-label">Round</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="gameTime">--</div>
+                            <div class="stat-label">Time</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="host-messages">
+            <h2 class="panel-title">Game Messages</h2>
+            <div id="hostMessages">
+                <div class="message info">Host display initialized</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="host-scene.js"></script>
+</body>
+</html>

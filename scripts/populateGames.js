@@ -43,6 +43,40 @@ async function populateGames() {
         maxPlayers: 8,
         category: 'word',
         thumbnail: '📝'
+      },
+      {
+        id: 'rpg',
+        name: 'Co-op RPG Quest',
+        description: 'Team up with friends in an epic RPG adventure! Choose your class, battle enemies, and conquer challenges together.',
+        price: 100,
+        minPlayers: 2,
+        maxPlayers: 8,
+        category: 'rpg',
+        thumbnail: '⚔️',
+        images: [
+          {
+            url: '/games/rpg/assets/thumbnail.png',
+            caption: 'Co-op RPG Quest',
+            isMain: true
+          }
+        ]
+      },
+      {
+        id: 'fighter',
+        name: 'Street Brawler',
+        description: 'Classic 2D fighting game! Use your virtual controller to move, jump, and unleash combos against your opponent!',
+        price: 50,
+        minPlayers: 2,
+        maxPlayers: 2,
+        category: 'action',
+        thumbnail: '🥊',
+        images: [
+          {
+            url: '/games/fighter/assets/thumbnail.png',
+            caption: 'Street Brawler',
+            isMain: true
+          }
+        ]
       }
     ];
 

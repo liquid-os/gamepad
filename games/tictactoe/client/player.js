@@ -117,9 +117,9 @@ socket.on('updateState', state => {
     }
   } else if (state.gamePhase === 'finished') {
     if (state.winner === myId) {
-      messageEl.textContent = '🎉 You won!';
+      messageEl.textContent = 'You won!';
     } else if (state.winner) {
-      messageEl.textContent = '😔 You lost!';
+      messageEl.textContent = 'You lost!';
     } else {
       messageEl.textContent = "It's a tie!";
     }

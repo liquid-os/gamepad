@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Host Screen - Party Game Hub</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HOST | BuddyBox.tv</title>
   <style>
     * {
       margin: 0;
@@ -13,7 +16,7 @@
     
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -21,9 +24,9 @@
     }
     
     .container {
-      background: white;
+      background: #1B2A41;
       border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
       padding: 40px;
       max-width: 800px;
       width: 90%;
@@ -32,14 +35,14 @@
     
     h1 {
       text-align: center;
-      color: #333;
+      color: white;
       margin-bottom: 30px;
       font-size: 2.5em;
       font-weight: 300;
     }
     
     .lobby-code {
-      background: #667eea;
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       color: white;
       padding: 20px;
       border-radius: 15px;
@@ -47,6 +50,88 @@
       font-size: 2em;
       font-weight: bold;
       margin: 20px 0;
+    }
+
+    .test-lobby-badge {
+      background: #ff6b35;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+      margin: 10px 0;
+      display: inline-block;
+    }
+
+    .test-lobby-invites {
+      background: #2c3e50;
+      border: 2px solid #ff6b35;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .test-lobby-invites h4 {
+      color: #ff6b35;
+      margin-bottom: 15px;
+      font-size: 1.2em;
+    }
+
+    .invite-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .invite-form input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 5px;
+      background: #34495e;
+      color: white;
+    }
+
+    .invite-form input::placeholder {
+      color: #bbb;
+    }
+
+    .invite-form button {
+      padding: 10px 20px;
+      background: #ff6b35;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .invite-form button:hover {
+      background: #e55a2b;
+    }
+
+    .invited-users {
+      background: #34495e;
+      border-radius: 5px;
+      padding: 10px;
+      min-height: 40px;
+    }
+
+    .invited-users h5 {
+      color: #ff6b35;
+      margin-bottom: 8px;
+      font-size: 0.9em;
+    }
+
+    .invited-user {
+      display: inline-block;
+      background: #ff6b35;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      margin: 2px;
     }
     
     .code-display {
@@ -67,7 +152,7 @@
       background: #f8f9fa;
       padding: 15px;
       border-radius: 10px;
-      border-left: 4px solid #667eea;
+      border-left: 4px solid #DA2359;
       font-size: 1.1em;
       font-weight: 600;
     }
@@ -84,7 +169,7 @@
       position: relative;
     }
     .game-option:hover { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       color: white;
       transform: translateY(-2px);
     }
@@ -159,13 +244,13 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       color: white;
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 10px 20px rgba(218, 35, 89, 0.3);
     }
 
     .btn-secondary {
@@ -199,7 +284,7 @@
       padding: 15px;
       border-radius: 10px;
       text-align: center;
-      border-left: 4px solid #667eea;
+      border-left: 4px solid #DA2359;
     }
 
     .score-card.winner {
@@ -217,27 +302,92 @@
       font-weight: bold;
       color: #28a745;
     }
+
+    .gg-header {
+      font-family: "Condiment", cursive;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 2.5em;
+      margin: 0;
+      transform: translateY(20%);
+    }
+
+    .platform-logo {
+      width: 20%;
+      object-fit: contain;
+      align-self: center;
+      animation: elasticPop 15s infinite ease-in-out;
+    }
+
+    @keyframes elasticPop {
+      0%, 90% {
+        transform: scale(1);
+      }
+      92% {
+        transform: scale(0.95);
+      }
+      94% {
+        transform: scale(1.05);
+      }
+      96% {
+        transform: scale(0.98);
+      }
+      98% {
+        transform: scale(1.02);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .platform-logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .pixel-text {
+      font-family: "Jersey 10", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>📺 Host Screen</h1>
+    <div class="platform-logo-container">
+      <img src="logo.png" class="platform-logo" alt="BuddyBox.tv" class="logo">
+    <h1 style="color: white;" class="gg-header"><b>BuddyBox.tv</b></h1>
+    </div>
     
     <div id="lobbyView">
       <div class="lobby-code">
         <div>Lobby Code</div>
         <div class="code-display" id="codeDisplay">----</div>
         <div style="font-size: 0.8em; opacity: 0.9;">Share this code with players</div>
+        <div id="testLobbyBadge" class="test-lobby-badge hidden">TEST LOBBY</div>
+      </div>
+
+      <div id="testLobbyInvites" class="test-lobby-invites hidden">
+        <h4>Invite Users to Test Lobby</h4>
+        <div class="invite-form">
+          <input type="text" id="inviteUsernames" placeholder="Enter usernames (comma-separated): username1, username2">
+          <button onclick="sendInvitations()">Send Invitations</button>
+        </div>
+        <div class="invited-users">
+          <h5>Invited Users:</h5>
+          <div id="invitedUsersList"></div>
+        </div>
       </div>
       
       <div class="host-controls">
-        <h3>👥 Players Connected: <span id="playerCount">0</span></h3>
+        <h3>Players Connected: <span id="playerCount">0</span></h3>
         <ul id="playerList"></ul>
         
-        <h3>🎮 Game Selection:</h3>
+        <h3>Game Selection:</h3>
         <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-          💡 <strong>Players select games on their devices!</strong><br>
-          The host (this screen) cannot select games. Players will choose from their available games.
+          <strong>Players select games on their devices!</strong><br>
         </div>
         <div id="gameList" style="display: none;"></div>
       </div>
@@ -280,18 +430,56 @@
 
     let currentCode = null;
     let currentGame = null;
+    let isTestLobby = false;
+    let testLobbyInfo = null;
 
-    // Create lobby as host (no authentication required)
-    socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
-      if (res?.error) {
-        alert(res.error);
-        return;
+    // Check if this is a test lobby from session storage
+    const testLobbyData = sessionStorage.getItem('testLobby');
+    if (testLobbyData) {
+      try {
+        testLobbyInfo = JSON.parse(testLobbyData);
+        isTestLobby = true;
+        sessionStorage.removeItem('testLobby'); // Clear after reading
+      } catch (error) {
+        console.error('Failed to parse test lobby data:', error);
       }
+    }
 
-      currentCode = res.code;
-      codeDisplay.textContent = res.code;
-      console.log('Host lobby created with code:', res.code);
-    });
+    // Create lobby as host
+    if (isTestLobby && testLobbyInfo) {
+      // Create test lobby
+      socket.emit('createLobby', { 
+        username: 'HOST', 
+        userId: null,
+        isTestLobby: true,
+        testGameId: testLobbyInfo.gameId,
+        testGamePath: testLobbyInfo.testGamePath
+      }, (res) => {
+        if (res?.error) {
+          alert(res.error);
+          return;
+        }
+
+        currentCode = res.code;
+        codeDisplay.textContent = res.code;
+        console.log('Test lobby created with code:', res.code);
+        
+        // Show test lobby UI
+        showTestLobbyUI();
+      });
+    } else {
+      // Create normal lobby
+      socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
+        if (res?.error) {
+          alert(res.error);
+          return;
+        }
+
+        currentCode = res.code;
+        codeDisplay.textContent = res.code;
+        console.log('Host lobby created with code:', res.code);
+      });
+    }
 
     socket.on('playerListUpdate', (players) => {
       playerList.innerHTML = '';
@@ -325,14 +513,51 @@
       lobbyView.style.display = 'none';
       gameView.style.display = 'block';
       gameEndView.style.display = 'none';
-      gameStatus.innerHTML = `
-        <h3>🎮 ${game.name}</h3>
-        <div id="gameStateDisplay">
-          <p>Game is running! Players are now playing on their devices.</p>
-          <p>This screen shows the game status for the TV.</p>
-        </div>
-        <button onclick="endGame()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 10px;">End Game</button>
-      `;
+      
+      // Check if this is the RPG game - load animated scene
+     // if (gameId === 'rpg') {
+        // Load full-screen animated battle scene
+        gameStatus.innerHTML = '';
+        
+        // Make socket available to iframe BEFORE creating it
+        window.socket = socket;
+        window.currentCode = currentCode;
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width: 100vw; height: 100vh; border: none; position: fixed; top: 0; left: 0; z-index: 9999;';
+        iframe.id = gameId+'HostFrame';
+        iframe.src = `/games/${gameId}/client/host-scene.html`;
+        
+        document.body.appendChild(iframe);
+        
+        console.log(gameId + ' animated scene loaded');
+      /*} else if (gameId === 'fighter') {
+        // Load fighting game scene
+        gameStatus.innerHTML = '';
+        
+        // Make socket available to iframe
+        window.socket = socket;
+        window.currentCode = currentCode;
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width: 100vw; height: 100vh; border: none; position: fixed; top: 0; left: 0; z-index: 9999;';
+        iframe.id = 'fighterHostFrame';
+        iframe.src = `/games/fighter/client/host-scene.html`;
+        
+        document.body.appendChild(iframe);
+        
+        console.log('Fighter game scene loaded');
+      } else {
+        // Standard host UI for other games
+        gameStatus.innerHTML = `
+          <h3>🎮 ${game.name}</h3>
+          <div id="gameStateDisplay">
+            <p>Game is running! Players are now playing on their devices.</p>
+            <p>This screen shows the game status for the TV.</p>
+          </div>
+          <button onclick="endGame()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 10px;">End Game</button>
+        `;
+      }*/
     });
 
     // Handle game state updates for the host
@@ -360,6 +585,8 @@
         updateTriviaHostDisplay(data);
       } else if (currentGame && currentGame.id === 'wordgame') {
         updateWordGameHostDisplay(data);
+      } else if (currentGame && currentGame.id === 'rpg') {
+        updateRPGHostDisplay(data);
       } else {
         // Generic display for unknown games
         gameStateDisplay.innerHTML = `
@@ -542,6 +769,190 @@
       gameStateDisplay.innerHTML = displayHtml;
     }
 
+    function updateRPGHostDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      const CLASS_ICONS = {
+        knight: '🛡️',
+        wizard: '🧙',
+        cleric: '✨',
+        rogue: '🗡️',
+        archer: '🏹',
+        druid: '🌿',
+        monk: '🧘',
+        warlock: '👹'
+      };
+
+      let displayHtml = `
+        <h4>Co-op RPG Quest</h4>
+        <p><strong>Phase:</strong> ${data.phase === 'class_selection' ? 'Class Selection' : `Combat - Round ${data.round || 1}`}</p>
+      `;
+
+      if (data.phase === 'class_selection') {
+        // Show class selection status
+        displayHtml += `
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 10px 0;">
+            <h5>Players Selecting Classes...</h5>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
+        `;
+
+        if (data.players && data.players.length > 0) {
+          data.players.forEach(player => {
+            const classIcon = CLASS_ICONS[player.class] || '❓';
+            const className = player.class ? player.class.charAt(0).toUpperCase() + player.class.slice(1) : 'Selecting...';
+            displayHtml += `
+              <div style="text-align: center; padding: 15px; background: white; border-radius: 5px; border: 2px solid ${player.class ? '#22c55e' : '#e5e7eb'};">
+                <div style="font-size: 3em;">${classIcon}</div>
+                <strong>${player.username}</strong><br>
+                <span style="color: ${player.class ? '#22c55e' : '#666'};">${className}</span>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+          </div>
+        `;
+      } else if (data.phase === 'combat') {
+        // Show combat view
+        displayHtml += `
+          <div style="display: flex; gap: 20px; margin: 20px 0;">
+            <!-- Players Team -->
+            <div style="flex: 1; background: rgba(34, 197, 94, 0.1); padding: 15px; border-radius: 10px; border: 2px solid #22c55e;">
+              <h5 style="text-align: center; margin-bottom: 15px;">🛡️ Heroes</h5>
+        `;
+
+        if (data.players && data.players.length > 0) {
+          data.players.forEach(player => {
+            const classIcon = CLASS_ICONS[player.class] || '👤';
+            const healthPercent = (player.health / player.maxHealth) * 100;
+            const healthColor = healthPercent > 60 ? '#22c55e' : healthPercent > 30 ? '#eab308' : '#ef4444';
+            
+            displayHtml += `
+              <div style="background: white; color: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 2em;">${classIcon}</div>
+                <div style="flex: 1;">
+                  <strong>${player.username}</strong>
+                  <div style="background: #e5e7eb; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px;">
+                    <div style="background: ${healthColor}; width: ${healthPercent}%; height: 100%; transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.9em; margin-top: 3px;">
+                    ${player.health}/${player.maxHealth} HP 
+                    ${player.speed ? `⚡${player.speed}` : ''} 
+                    ${player.defense ? `🛡️${player.defense}` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+
+            <!-- VS Divider -->
+            <div style="display: flex; align-items: center; justify-content: center; font-size: 3em; opacity: 0.5;">
+              ⚔️
+            </div>
+
+            <!-- Enemies Team -->
+            <div style="flex: 1; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 10px; border: 2px solid #ef4444;">
+              <h5 style="text-align: center; margin-bottom: 15px;">👹 Enemies</h5>
+        `;
+
+        if (data.enemies && data.enemies.length > 0) {
+          data.enemies.forEach(enemy => {
+            const healthPercent = (enemy.health / enemy.maxHealth) * 100;
+            const healthColor = healthPercent > 60 ? '#22c55e' : healthPercent > 30 ? '#eab308' : '#ef4444';
+            
+            displayHtml += `
+              <div style="background: white; color: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 2em;">👹</div>
+                <div style="flex: 1;">
+                  <strong>${enemy.name}</strong>
+                  <div style="background: #e5e7eb; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px;">
+                    <div style="background: ${healthColor}; width: ${healthPercent}%; height: 100%; transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.9em; margin-top: 3px;">
+                    ${enemy.health}/${enemy.maxHealth} HP 
+                    ${enemy.speed ? `⚡${enemy.speed}` : ''} 
+                    ${enemy.defense ? `🛡️${enemy.defense}` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+          </div>
+        `;
+
+        // Show turn order if available
+        if (data.turnOrder && data.turnOrder.length > 0) {
+          displayHtml += `
+            <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+              <h5>Turn Order:</h5>
+              <div style="display: flex; gap: 10px; overflow-x: auto; margin-top: 10px;">
+          `;
+
+          data.turnOrder.forEach((turn, index) => {
+            const icon = turn.type === 'player' ? (CLASS_ICONS[turn.class] || '👤') : '👹';
+            const name = turn.type === 'player' ? turn.username : turn.name;
+            const isFirst = index === 0;
+
+            displayHtml += `
+              <div style="text-align: center; padding: 10px; background: ${isFirst ? '#fbbf24' : 'white'}; color: #333; border-radius: 5px; min-width: 80px; border: 2px solid ${isFirst ? '#f59e0b' : '#e5e7eb'};">
+                <div style="font-size: 2em;">${icon}</div>
+                <div style="font-size: 0.8em;">${name}</div>
+                <div style="font-weight: bold; color: #f59e0b;">${turn.speed}</div>
+              </div>
+            `;
+          });
+
+          displayHtml += `
+              </div>
+            </div>
+          `;
+        }
+
+        // Show message
+        if (data.message) {
+          displayHtml += `
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0; text-align: center;">
+              <strong>${data.message}</strong>
+            </div>
+          `;
+        }
+
+        // Show combat log if available
+        if (data.combatLog && data.combatLog.length > 0) {
+          displayHtml += `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 10px 0; max-height: 200px; overflow-y: auto;">
+              <h5>📜 Combat Log:</h5>
+          `;
+
+          data.combatLog.forEach(entry => {
+            displayHtml += `
+              <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 5px;">
+                <strong>${entry.actor}</strong> uses <em>${entry.action}</em>
+                ${entry.results && entry.results.length > 0 ? '<br>' + entry.results.join('<br>') : ''}
+              </div>
+            `;
+          });
+
+          displayHtml += `
+            </div>
+          `;
+        }
+      }
+
+      gameStateDisplay.innerHTML = displayHtml;
+    }
+
     function showHostGameEndScreen(data) {
       console.log('Showing host game end screen:', data);
       
@@ -594,14 +1005,94 @@
     };
 
     function endGame() {
+      // Remove RPG iframe if exists
+      const rpgFrame = document.getElementById('rpgHostFrame');
+      if (rpgFrame) {
+        rpgFrame.remove();
+      }
+      
+      // Remove Fighter iframe if exists
+      const fighterFrame = document.getElementById('fighterHostFrame');
+      if (fighterFrame) {
+        fighterFrame.remove();
+      }
+      
       socket.emit('endLobby', currentCode);
       window.location.reload();
     }
 
     socket.on('lobbyClosed', () => {
+      // Remove RPG iframe if exists
+      const rpgFrame = document.getElementById('rpgHostFrame');
+      if (rpgFrame) {
+        rpgFrame.remove();
+      }
+      
+      // Remove Fighter iframe if exists
+      const fighterFrame = document.getElementById('fighterHostFrame');
+      if (fighterFrame) {
+        fighterFrame.remove();
+      }
+      
       alert('Lobby was closed.');
       window.location.reload();
     });
+
+    // Test lobby functions
+    function showTestLobbyUI() {
+      const testLobbyBadge = document.getElementById('testLobbyBadge');
+      const testLobbyInvites = document.getElementById('testLobbyInvites');
+      
+      testLobbyBadge.classList.remove('hidden');
+      testLobbyInvites.classList.remove('hidden');
+      
+      // Update lobby code display to show it's a test lobby
+      const codeDisplay = document.getElementById('codeDisplay');
+      codeDisplay.style.border = '2px solid #ff6b35';
+    }
+
+    function sendInvitations() {
+      const usernamesInput = document.getElementById('inviteUsernames');
+      const usernames = usernamesInput.value.trim();
+      
+      if (!usernames) {
+        alert('Please enter at least one username');
+        return;
+      }
+      
+      socket.emit('inviteToTestLobby', { 
+        lobbyCode: currentCode, 
+        usernames: usernames 
+      }, (res) => {
+        if (res?.error) {
+          alert('Error: ' + res.error);
+          return;
+        }
+        
+        if (res.success) {
+          // Clear input
+          usernamesInput.value = '';
+          
+          // Update invited users list
+          updateInvitedUsersList(res.allAllowedUsernames);
+          
+          // Show success message
+          alert(`Successfully invited ${res.invitedUsernames.length} users: ${res.invitedUsernames.join(', ')}`);
+        }
+      });
+    }
+
+    function updateInvitedUsersList(allowedUsernames) {
+      const invitedUsersList = document.getElementById('invitedUsersList');
+      invitedUsersList.innerHTML = '';
+      
+      allowedUsernames.forEach(username => {
+        const userTag = document.createElement('span');
+        userTag.className = 'invited-user';
+        userTag.textContent = username;
+        invitedUsersList.appendChild(userTag);
+      });
+    }
   </script>
 </body>
 </html>

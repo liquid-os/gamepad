@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Co-op RPG Quest - Host View</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .round-info {
+      text-align: center;
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+
+    /* Class Selection View */
+    .class-selection-view {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 1200px;
+      margin: 40px auto;
+    }
+
+    .class-card {
+      background: rgba(255, 255, 255, 0.1);
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .class-card.selected {
+      background: rgba(34, 197, 94, 0.3);
+      border-color: rgb(34, 197, 94);
+      box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+    }
+
+    .class-icon {
+      font-size: 5em;
+      margin-bottom: 15px;
+    }
+
+    .class-name {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .class-hp {
+      font-size: 1.2em;
+      opacity: 0.8;
+    }
+
+    .player-name {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 10px;
+      font-size: 1.1em;
+      color: #22c55e;
+    }
+
+    /* Combat View */
+    .combat-arena {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 40px;
+      gap: 40px;
+    }
+
+    .team-side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .vs-divider {
+      font-size: 4em;
+      font-weight: bold;
+      opacity: 0.5;
+      text-align: center;
+    }
+
+    .combatant {
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 15px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      transition: all 0.3s;
+    }
+
+    .combatant.active {
+      border-color: #fbbf24;
+      box-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+    }
+
+    .combatant-icon {
+      font-size: 4em;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .combatant-info {
+      flex: 1;
+    }
+
+    .combatant-name {
+      font-size: 1.8em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .health-container {
+      margin-bottom: 10px;
+    }
+
+    .health-bar-bg {
+      background: rgba(0, 0, 0, 0.5);
+      height: 30px;
+      border-radius: 15px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+    }
+
+    .health-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    .health-bar.low {
+      background: linear-gradient(90deg, #eab308 0%, #ca8a04 100%);
+    }
+
+    .health-bar.critical {
+      background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .speed-badge {
+      background: rgba(251, 191, 36, 0.3);
+      border: 2px solid #fbbf24;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    /* Turn Order */
+    .turn-order {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px auto;
+      max-width: 800px;
+    }
+
+    .turn-order h3 {
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 1.5em;
+    }
+
+    .turn-list {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 10px;
+    }
+
+    .turn-item {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      padding: 10px 15px;
+      min-width: 100px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .turn-item.current {
+      background: rgba(251, 191, 36, 0.3);
+      border-color: #fbbf24;
+      box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+    }
+
+    .turn-icon {
+      font-size: 2em;
+    }
+
+    .turn-speed {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #fbbf24;
+    }
+
+    /* Combat Log */
+    .combat-log {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 20px;
+      border-radius: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 20px auto;
+      max-width: 800px;
+    }
+
+    .log-entry {
+      padding: 10px;
+      margin: 5px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .status-message {
+      text-align: center;
+      font-size: 1.5em;
+      padding: 20px;
+      background: rgba(59, 130, 246, 0.3);
+      border: 2px solid #3b82f6;
+      border-radius: 15px;
+      margin: 20px auto;
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="classSelectionScene" src="/games/rpg/client/class-selection-scene.html" style="display: none; width: 100%; height: 100vh; border: none; position: absolute; top: 0; left: 0;"></iframe>
+
+  <div id="pickAPath" style="display: none;">
+    <h1 class="title">Choose Your Path</h1>
+    <div class="round-info">The party must decide which path to take...</div>
+    
+    <div style="display: flex; gap: 40px; padding: 40px; justify-content: center; align-items: stretch; max-width: 1400px; margin: 0 auto;">
+      <div style="flex: 1; background: rgba(0, 0, 0, 0.3); border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 3em; margin-bottom: 20px;">⬅️ Go Left</h2>
+        <p id="leftPathDescription" style="font-size: 1.4em; line-height: 1.6; text-align: center; flex: 1; display: flex; align-items: center;"></p>
+        <div style="margin-top: 20px; font-size: 1.2em; opacity: 0.8;">
+          Votes: <span id="leftPathVotes" style="font-weight: bold; color: #22c55e;">0</span>
+        </div>
+      </div>
+      
+      <div style="flex: 1; background: rgba(0, 0, 0, 0.3); border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 40px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 3em; margin-bottom: 20px;">Go Right ➡️</h2>
+        <p id="rightPathDescription" style="font-size: 1.4em; line-height: 1.6; text-align: center; flex: 1; display: flex; align-items: center;"></p>
+        <div style="margin-top: 20px; font-size: 1.2em; opacity: 0.8;">
+          Votes: <span id="rightPathVotes" style="font-weight: bold; color: #22c55e;">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="status-message" id="pickAPathStatus">
+      Waiting for players to vote...
+    </div>
+  </div>
+
+  <div id="combat" style="display: none;">
+    <h1 class="title">Combat Encounter</h1>
+    <div class="round-info" id="roundInfo">Round 1</div>
+
+    <div class="turn-order" id="turnOrderContainer" style="display: none;">
+      <h3>Turn Order</h3>
+      <div id="turnOrderList" class="turn-list"></div>
+    </div>
+
+    <div class="combat-arena">
+      <div class="team-side" id="playersTeam"></div>
+      <div class="vs-divider">⚔️<br>VS</div>
+      <div class="team-side" id="enemiesTeam"></div>
+    </div>
+
+    <div class="combat-log" id="combatLog"></div>
+
+    <div class="status-message" id="statusMessage">
+      Combat Starting...
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = window.parent.socket || io('/lobby');
+    const lobbyCode = window.parent.currentCode;
+
+    const CLASS_ICONS = {
+      knight: '🛡️',
+      wizard: '🧙',
+      cleric: '✨',
+      rogue: '🗡️',
+      archer: '🏹',
+      druid: '🌿'
+    };
+
+    const CLASS_NAMES = {
+      knight: 'Knight',
+      wizard: 'Wizard',
+      cleric: 'Cleric',
+      rogue: 'Rogue',
+      archer: 'Archer',
+      druid: 'Druid'
+    };
+
+    let gameState = {
+      phase: 'class_selection',
+      players: {},
+      enemies: [],
+      turnOrder: [],
+      round: 1
+    };
+
+    // Listen for host game updates
+    socket.on('hostGameUpdate', (data) => {
+      console.log('Host game update:', data);
+      
+      if (data.phase === 'class_selection') {
+        showClassSelection(data);
+      } else if (data.phase === 'pick_a_path') {
+        showPickAPath(data);
+      } else if (data.phase === 'combat') {
+        showCombat(data);
+      }
+    });
+
+    // Listen for Pick a Path started event
+    socket.on('pickAPathStarted', (data) => {
+      console.log('Pick a Path started:', data);
+      showPickAPath(data);
+    });
+
+    // Listen for Pick a Path vote updates
+    socket.on('pathVoteUpdate', (data) => {
+      console.log('Pick a Path vote update:', data);
+      updatePickAPathVotes(data);
+    });
+
+    // Listen for path chosen
+    socket.on('pathChosen', (data) => {
+      console.log('Path chosen:', data);
+      const statusEl = document.getElementById('pickAPathStatus');
+      if (statusEl) {
+        statusEl.textContent = `Path chosen: ${data.choice === 'left' ? 'Go Left ⬅️' : 'Go Right ➡️'}`;
+      }
+    });
+
+    // Request initial state on load
+    window.addEventListener('load', () => {
+      console.log('Host view loaded, requesting initial state');
+      socket.emit('gameAction', { 
+        action: 'requestHostState',
+        payload: {}
+      });
+    });
+
+    function showClassSelection(data) {
+      document.getElementById('classSelectionScene').style.display = 'block';
+      document.getElementById('pickAPath').style.display = 'none';
+      document.getElementById('combat').style.display = 'none';
+      
+      // The iframe will handle its own updates via socket events
+    }
+
+    function showPickAPath(data) {
+      console.log('Showing Pick a Path view:', data);
+      document.getElementById('classSelectionScene').style.display = 'none';
+      document.getElementById('pickAPath').style.display = 'block';
+      document.getElementById('combat').style.display = 'none';
+      
+      // Update descriptions
+      document.getElementById('leftPathDescription').textContent = data.leftDescription || 'Unknown path...';
+      document.getElementById('rightPathDescription').textContent = data.rightDescription || 'Unknown path...';
+      
+      // Update votes
+      if (data.votes) {
+        updatePickAPathVotes(data);
+      } else {
+        document.getElementById('leftPathVotes').textContent = '0';
+        document.getElementById('rightPathVotes').textContent = '0';
+      }
+    }
+
+    function updatePickAPathVotes(data) {
+      const votes = data.votes || {};
+      let leftVotes = 0;
+      let rightVotes = 0;
+      
+      Object.values(votes).forEach(vote => {
+        if (vote === 'left') leftVotes++;
+        else if (vote === 'right') rightVotes++;
+      });
+      
+      document.getElementById('leftPathVotes').textContent = leftVotes;
+      document.getElementById('rightPathVotes').textContent = rightVotes;
+    }
+
+    function showCombat(data) {
+      document.getElementById('classSelectionScene').style.display = 'none';
+      document.getElementById('pickAPath').style.display = 'none';
+      document.getElementById('combat').style.display = 'block';
+
+    gameState.phase = 'combat';
+      gameState.players = data.players || [];
+      gameState.enemies = data.enemies || [];
+      gameState.turnOrder = data.turnOrder || [];
+      gameState.round = data.round || 1;
+
+    // Update title based on encounter type and show puzzle rounds X/Y if applicable
+    const titleEl = document.querySelector('#combat .title');
+    if (data.encounterType === 'puzzle') {
+      if (titleEl) titleEl.textContent = 'Interaction';
+      const maxRounds = data.puzzleMaxRounds || gameState.puzzleMaxRounds;
+      if (maxRounds) {
+        document.getElementById('roundInfo').textContent = `Round ${gameState.round}/${maxRounds}`;
+      } else {
+        document.getElementById('roundInfo').textContent = `Round ${gameState.round}`;
+      }
+    } else if (data.encounterType === 'boss') {
+      if (titleEl) titleEl.textContent = 'Boss Battle';
+      document.getElementById('roundInfo').textContent = `Round ${gameState.round}`;
+    } else {
+      if (titleEl) titleEl.textContent = 'Combat Encounter';
+      document.getElementById('roundInfo').textContent = `Round ${gameState.round}`;
+    }
+
+      // Update players
+      const playersTeam = document.getElementById('playersTeam');
+      playersTeam.innerHTML = '<h2 style="text-align:center; margin-bottom:20px;">🛡️ Heroes</h2>';
+      
+      gameState.players.forEach(player => {
+        const combatant = createCombatantElement(player, 'player');
+        playersTeam.appendChild(combatant);
+      });
+
+      // Update enemies
+      const enemiesTeam = document.getElementById('enemiesTeam');
+      enemiesTeam.innerHTML = '<h2 style="text-align:center; margin-bottom:20px;">👹 Enemies</h2>';
+      
+      gameState.enemies.forEach(enemy => {
+        const combatant = createCombatantElement(enemy, 'enemy');
+        enemiesTeam.appendChild(combatant);
+      });
+
+      // Update turn order
+      if (gameState.turnOrder.length > 0) {
+        showTurnOrder();
+      }
+
+      // Update status message
+      const statusMsg = data.message || 'Battle in progress...';
+      document.getElementById('statusMessage').textContent = statusMsg;
+
+      // Show combat log if available
+      if (data.combatLog) {
+        updateCombatLog(data.combatLog);
+      }
+    }
+
+  // Host-only riddle display for puzzle encounters (Riddlemaster)
+  socket.on('riddleDisplay', (data) => {
+    // Ensure turn order container exists and is visible
+    const container = document.getElementById('turnOrderContainer');
+    if (!container) return;
+    container.style.display = 'block';
+
+    // Remove any existing riddle display first
+    const existing = document.getElementById('riddleDisplay');
+    if (existing) existing.remove();
+
+    // Create riddle block
+    const riddle = document.createElement('div');
+    riddle.id = 'riddleDisplay';
+    riddle.style.cssText = `
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      padding: 24px;
+      border-radius: 14px;
+      border: 3px solid #ffaa00;
+      box-shadow: 0 0 30px rgba(255,170,0,0.35);
+      width: 50%;
+      margin: 0 auto 16px auto;
+      text-align: center;
+    `;
+
+    const q = document.createElement('div');
+    q.style.cssText = 'font-size: 22px; font-weight: 700; color:#ffaa00; margin-bottom: 14px; line-height:1.4;';
+    q.textContent = data?.question || '';
+    riddle.appendChild(q);
+
+    const opts = document.createElement('div');
+    opts.style.cssText = 'display:flex; flex-direction:column; gap:10px; align-items:stretch;';
+    const options = data?.options || {};
+    Object.entries(options).forEach(([key, value]) => {
+      const opt = document.createElement('div');
+      opt.style.cssText = 'background: rgba(255,170,0,0.18); border: 2px solid #ffaa00; padding: 12px 14px; border-radius: 10px; font-size: 18px; text-align:left;';
+      opt.textContent = `${key}: ${value}`;
+      opts.appendChild(opt);
+    });
+    riddle.appendChild(opts);
+
+    // Insert above the Turn Order header
+    container.insertBefore(riddle, container.firstChild);
+  });
+
+    function createCombatantElement(combatant, type) {
+      const div = document.createElement('div');
+      div.className = 'combatant';
+      div.id = `combatant-${combatant.id}`;
+
+      let icon, name, health, maxHealth, speed;
+
+      if (type === 'player') {
+        icon = CLASS_ICONS[combatant.class] || '👤';
+        name = combatant.username;
+        health = combatant.health;
+        maxHealth = combatant.maxHealth;
+        speed = combatant.speed || 0;
+      } else {
+        icon = '👹';
+        name = combatant.name;
+        health = combatant.health;
+        maxHealth = combatant.maxHealth;
+        speed = combatant.speed || 0;
+      }
+
+      const healthPercent = (health / maxHealth) * 100;
+      let healthClass = '';
+      if (healthPercent <= 30) healthClass = 'critical';
+      else if (healthPercent <= 60) healthClass = 'low';
+
+      div.innerHTML = `
+        <div class="combatant-icon">${icon}</div>
+        <div class="combatant-info">
+          <div class="combatant-name">${name}</div>
+          <div class="health-container">
+            <div class="health-bar-bg">
+              <div class="health-bar ${healthClass}" style="width: ${healthPercent}%">
+                ${health}/${maxHealth}
+              </div>
+            </div>
+          </div>
+          ${speed > 0 ? `<div class="speed-badge">⚡ ${speed}</div>` : ''}
+        </div>
+      `;
+
+      return div;
+    }
+
+    function showTurnOrder() {
+      const container = document.getElementById('turnOrderContainer');
+      const list = document.getElementById('turnOrderList');
+      
+      container.style.display = 'block';
+      list.innerHTML = '';
+
+      gameState.turnOrder.forEach((turn, index) => {
+        const item = document.createElement('div');
+        item.className = 'turn-item';
+        if (index === 0) item.classList.add('current');
+
+        const icon = turn.type === 'player' ? CLASS_ICONS[turn.class] : '👹';
+        const name = turn.type === 'player' ? turn.username : turn.name;
+
+        item.innerHTML = `
+          <div class="turn-icon">${icon}</div>
+          <div style="font-size:0.9em;">${name}</div>
+          <div class="turn-speed">${turn.speed}</div>
+        `;
+
+        list.appendChild(item);
+      });
+    }
+
+    function updateCombatLog(logEntries) {
+      const logContainer = document.getElementById('combatLog');
+      
+      logEntries.forEach(entry => {
+        const logDiv = document.createElement('div');
+        logDiv.className = 'log-entry';
+        
+        let html = `<strong>${entry.actor}</strong> uses <em>${entry.action}</em>`;
+        if (entry.results.length > 0) {
+          html += '<br>' + entry.results.join('<br>');
+        }
+        
+        logDiv.innerHTML = html;
+        logContainer.appendChild(logDiv);
+      });
+
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    console.log('RPG Host view initialized');
+  </script>
+</body>
+</html>
+

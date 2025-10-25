@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Game Name - Player</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Game Header -->
+        <div class="game-header">
+            <h1>Your Game Name</h1>
+            <div class="game-info">
+                <span class="phase" id="gamePhase">Waiting...</span>
+                <span class="players" id="playerCount">0/4 players</span>
+            </div>
+        </div>
+
+        <!-- Game Content -->
+        <div class="game-content" id="gameContent">
+            <!-- Waiting Phase -->
+            <div class="phase-content" id="waitingPhase">
+                <div class="waiting-message">
+                    <h2>Waiting for Players</h2>
+                    <p>Share the game code with friends to join!</p>
+                    <div class="game-code" id="gameCode">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Ready Phase -->
+            <div class="phase-content hidden" id="readyPhase">
+                <div class="ready-message">
+                    <h2>Ready to Start!</h2>
+                    <p>All players have joined. Click Ready when you're prepared!</p>
+                    <button class="btn btn-primary" id="readyBtn">I'm Ready!</button>
+                </div>
+            </div>
+
+            <!-- Playing Phase -->
+            <div class="phase-content hidden" id="playingPhase">
+                <div class="game-board">
+                    <h2>Game in Progress</h2>
+                    <div class="player-scores" id="playerScores">
+                        <!-- Player scores will be populated here -->
+                    </div>
+                    
+                    <div class="game-actions">
+                        <button class="btn btn-action" id="actionBtn">Take Action</button>
+                        <button class="btn btn-secondary" id="resetBtn">Reset Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finished Phase -->
+            <div class="phase-content hidden" id="finishedPhase">
+                <div class="game-results">
+                    <h2>Game Over!</h2>
+                    <div class="winner" id="winner">Loading...</div>
+                    <div class="final-scores" id="finalScores">
+                        <!-- Final scores will be populated here -->
+                    </div>
+                    <button class="btn btn-primary" id="playAgainBtn">Play Again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Messages -->
+        <div class="game-messages" id="gameMessages">
+            <!-- Messages will be added here -->
+        </div>
+    </div>
+
+    <script src="player.js"></script>
+</body>
+</html>

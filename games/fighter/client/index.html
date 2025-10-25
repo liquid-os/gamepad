@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Street Brawler - Controller</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Character Selection -->
+    <div id="characterSelect" class="phase">
+      <h1>🥊 Choose Your Fighter</h1>
+      
+      <div id="fighterList" class="fighter-grid">
+        <!-- Fighters will be populated here -->
+      </div>
+
+      <div id="selectedFighter" class="selected-display" style="display: none;">
+        <h3>You selected: <span id="yourFighter"></span></h3>
+        <p>Waiting for opponent...</p>
+      </div>
+    </div>
+
+    <!-- Virtual Controller -->
+    <div id="controller" class="phase" style="display: none;">
+      <div class="controller-container">
+        <!-- Player Info -->
+        <div class="player-info">
+          <div class="player-name" id="playerName">Player 1</div>
+          <div class="health-display">
+            <div class="health-bar-container">
+              <div class="health-bar" id="playerHealthBar"></div>
+            </div>
+            <div class="health-text" id="playerHealthText">100/100</div>
+          </div>
+        </div>
+
+        <!-- Digital Joystick and Jump Button -->
+        <div class="controls-container">
+          <div class="joystick-container">
+            <div class="joystick" id="joystick">
+              <div class="joystick-knob" id="joystickKnob"></div>
+            </div>
+            <div class="joystick-label">Move</div>
+          </div>
+          
+          <div class="jump-container">
+            <button class="jump-btn" id="btnJump">
+              <span>JUMP</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <button class="action-btn btn-a" id="btnA">
+            <span>A</span>
+            <div class="btn-label">Light</div>
+          </button>
+          <button class="action-btn btn-b" id="btnB">
+            <span>B</span>
+            <div class="btn-label">Medium</div>
+          </button>
+          <button class="action-btn btn-x" id="btnX">
+            <span>X</span>
+            <div class="btn-label">Heavy</div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game End Screen -->
+    <div id="gameEnd" class="phase" style="display: none;">
+      <div class="end-screen">
+        <h1 id="endTitle"></h1>
+        <p id="endMessage"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="player.js"></script>
+</body>
+</html>
+

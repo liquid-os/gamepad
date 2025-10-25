@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Party Game Platform</title>
@@ -13,17 +17,76 @@
     
     body { 
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #A7D3A6 0%, #F7EF81 100%);
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+
+    .condiment-regular {
+      font-family: "Condiment", cursive;
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    .gg-header {
+      font-family: "Condiment", cursive;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 2.5em;
+      margin: 0;
+      transform: translateY(20%);
+    }
+
+    .platform-logo {
+      width: 20%;
+      object-fit: contain;
+      align-self: center;
+      animation: elasticPop 15s infinite ease-in-out;
+    }
+
+    @keyframes elasticPop {
+      0%, 90% {
+        transform: scale(1);
+      }
+      92% {
+        transform: scale(0.95);
+      }
+      94% {
+        transform: scale(1.05);
+      }
+      96% {
+        transform: scale(0.98);
+      }
+      98% {
+        transform: scale(1.02);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .platform-logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .pixel-text {
+      font-family: "Jersey 10", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
+
     
     .container {
-      background: white;
+      background: linear-gradient(135deg, #dee7e7 0%, #fffffa 100%);
+      background: #1B2A41;
       border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
       padding: 40px;
       max-width: 500px;
       width: 90%;
@@ -156,23 +219,75 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #A7D3A6 0%, #F7EF81 100%);
+      background: #324A5F;
       color: white;
+      flex: 1;
+      font-family: "Jersey 10", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 1.5em;
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 10px 20px rgba(30, 30, 31, 0.3);
+      background: #3d5a73;
+    }
+
+    .btn-cool {
+      background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
+      color: white;
+      flex: 1;
+      font-family: "Jersey 10", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+      font-size: 1.5em;
+    }
+
+    .btn-cool:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(30, 30, 31, 0.3);
+      background: #ebe460;
+      color: rgba(30, 30, 31, 1);
+    }
+
+    .dotted-line {
+      border-bottom: 6px dotted #ffffff; /* thickness + color */
+      width: 70%;                    /* or any width you want */
+      margin-top: 20px;
+      margin-bottom: 20px;
     }
 
     .btn-secondary {
-      background: #f8f9fa;
-      color: #495057;
+      background: transparent;
+      color: #e9ecef;
       border: 2px solid #e9ecef;
+      border-radius: 10px;
+    }
+
+    .btn-flexbox {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+      padding-top: 20px;
+      padding-left: 20px;
+      padding-right: 20px;
+      padding-bottom: 10px;
+      background: white;
+      border-radius: 10px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;   /* stack items vertically (1 per line) */
+      align-items: center;      /* center horizontally */
+      gap: 10px;  
+      text-align: center;
     }
 
     .btn-secondary:hover {
-      background: #e9ecef;
+      background: #8b8c8e;
       transform: translateY(-2px);
     }
 
@@ -408,6 +523,41 @@
       border-radius: 10px;
     }
 
+    .platform-logo {
+      width: 20%;
+      object-fit: contain;
+      align-self: center;
+      animation: elasticPop 15s infinite ease-in-out;
+    }
+
+    @keyframes elasticPop {
+      0%, 90% {
+        transform: scale(1);
+      }
+      92% {
+        transform: scale(0.95);
+      }
+      94% {
+        transform: scale(1.05);
+      }
+      96% {
+        transform: scale(0.98);
+      }
+      98% {
+        transform: scale(1.02);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .platform-logo-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
     .gallery-thumbnails {
       display: flex;
       gap: 10px;
@@ -466,29 +616,32 @@
 </head>
 <body>
   <div class="container">
-    <h1>🎮 Party Game Hub</h1>
+    <div class="platform-logo-container">
+    <img src="logo.png" class="platform-logo" alt="BuddyBox.tv" class="logo">
+  <h1 style="color: white;" class="gg-header"><b>BuddyBox.tv</b></h1>
+  </div>
+
 
     <div id="authView">
       <div id="loginForm">
-        <h2>🔐 Login</h2>
+        <h2 style="color: white; font-size: 2.5em;" class="pixel-text">Login</h2>
         <div class="input-group">
           <input id="loginEmail" type="email" placeholder="Email" />
         </div>
         <div class="input-group">
           <input id="loginPassword" type="password" placeholder="Password" />
         </div>
-        <button id="loginBtn">Login</button>
-        <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+        <button id="loginBtn" class = "btn-primary">Login</button>
+        <p style="color: white; font-size: 1.2em;" class="pixel-text">Don't have an account? <a href="#" id="showRegister">Register here</a></p>
         
         <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
-          <h3>🎮 Quick Start</h3>
-          <p>Want to start playing immediately?</p>
-          <button id="quickHostBtn" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+          <h3 style="font-size: 1.8em;" class="pixel-text">QUICK HOST</h3>
+          <button id="quickHostBtn" class = "btn-primary" style="width: 100%; margin-top: 10px;">Host Lobby</button>
         </div>
       </div>
       
       <div id="registerForm" style="display: none;">
-        <h2>📝 Register</h2>
+        <h2>Register</h2>
         <div class="input-group">
           <input id="registerUsername" type="text" placeholder="Username" />
         </div>
@@ -502,42 +655,51 @@
         <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
         
         <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
-          <h3>🎮 Quick Start</h3>
+          <h3>Quick Start</h3>
           <p>Want to start playing immediately?</p>
-          <button id="quickHostBtn2" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+          <button id="quickHostBtn2" style="background: #28a745; width: 100%; margin-top: 10px;">Host Lobby</button>
         </div>
       </div>
     </div>
 
     <div id="homeView" style="display: none;">
       <div id="userInfo">
-        <h3>Welcome, <span id="userDisplayName"></span>!</h3>
-        <p>💰 Coins: <span id="userCoins">0</span></p>
-        <button id="logoutBtn" style="background: #dc3545; margin: 10px 0;">Logout</button>
+        <h3 style="color: white;" class="pixel-text">Welcome, <span id="userDisplayName"></span>!</h3>
       </div>
       
-      <div style="display: flex; gap: 10px; margin: 20px 0;">
-        <button id="createLobby" style="flex: 1;">📺 Host Game (TV Screen)</button>
-        <button id="joinAsPlayer" style="flex: 1; background: #28a745;">📱 Join as Player</button>
-        <button id="storeBtn" style="flex: 1; background: #6f42c1; color: white;">🛒 Game Store</button>
-        <button id="creatorBtn" style="flex: 1; background: #fd7e14; color: white;">🎮 Creator Dashboard</button>
+      <div class = "btn-flexbox" style="display: flex; gap: 10px; margin: 5px 0;">
+        <button id="createLobby" class = "btn-cool" >Host Lobby</button>
+        <button id="joinAsPlayer" class = "btn-cool" >Join as Player</button>
       </div>
-      
       <div id="joinSection" style="display: none;">
         <div class="input-group">
-          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" maxlength="4" />
+          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" style = "margin-top: 5px;" maxlength="4" />
+        <button id="joinLobby" class = "btn-cool" style = "margin-top: 10px;">Join Lobby</button>
+
         </div>
-        <button id="joinLobby">🚀 Join Lobby</button>
+      </div>
+      <div style="display: flex; justify-content: center; align-items: center;">
+      <div class = "dotted-line"></div>
+    </div>
+      <div class = "btn-stack" style="gap: 0px; margin: 0px 0;">
+        <button id="storeBtn" class = "btn-primary" style = "width: 80%;">Game Store</button>
+        <button id="libraryBtn" class = "btn-primary" style = "width: 80%;">Game Library</button>
+        <button id="creatorBtn" class = "btn-primary" style = "width: 80%;">Creator Dashboard</button>
+      </div>
+      
+      
+      <div style="display: flex; justify-content: center; align-items: center;">
+        <button id="logoutBtn" class= "pixel-text" style="background: #dc3545; margin: 10px 0; max-width: 40%; font-size: 1.2em;">Logout</button>
       </div>
   </div>
 
   <div id="lobbyView">
       <div class="lobby-code">Lobby Code: <span id="codeDisplay"></span></div>
       
-      <h3>👥 Players in Lobby:</h3>
+      <h3>Players in Lobby:</h3>
     <ul id="playerList"></ul>
       
-      <h3>🎯 Select a Game:</h3>
+      <h3>Select a Game:</h3>
     <div id="gameList"></div>
       
       <button id="exitLobby" style="background: #dc3545; margin-top: 20px;">🚪 Leave Lobby</button>
@@ -596,14 +758,22 @@
       const gameUrl = `/games/${gameId}/client/index.html`;
       console.log('Loading game in iframe:', gameUrl);
       
-      // Create iframe for the game
-      const iframe = document.createElement('iframe');
-      iframe.style.cssText = 'width: 100%; height: 100vh; border: none;';
-      iframe.id = 'gameFrame';
-      
-      // Clear any existing game content and add iframe
+      // Clear any existing game content
       const gameContainer = document.getElementById('gameView');
       gameContainer.innerHTML = '';
+      
+      // Create iframe for the game
+      const iframe = document.createElement('iframe');
+      iframe.id = 'gameFrame';
+      
+      // For RPG game, make it fullscreen without container constraints
+      //if (gameId === 'rpg') {
+        iframe.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; border: none; z-index: 10000;';
+      /*} else {
+        // Other games use normal iframe sizing
+        iframe.style.cssText = 'width: 100%; height: 100vh; border: none;';*/
+      //}
+      
       gameContainer.appendChild(iframe);
       
       // Set the src after adding to DOM to ensure parent window variables are available
@@ -728,7 +898,7 @@
       });
 
     socket.on('lobbyClosed', () => {
-      alert('Lobby was closed by host.');
+      //alert('Lobby was closed by host.');
       window.location.reload();
     });
 
@@ -971,7 +1141,6 @@
       gameView.style.display = 'none';
       gameEndView.style.display = 'none';
       userDisplayName.textContent = currentUser.username;
-      userCoins.textContent = currentUser.coins;
     }
 
     // Login function
@@ -1157,6 +1326,11 @@
     // Store button
     document.getElementById('storeBtn').onclick = () => {
       window.location.href = '/store.html';
+    };
+
+    // Library button
+    document.getElementById('libraryBtn').onclick = () => {
+      window.location.href = '/library.html';
     };
 
     // Creator dashboard button
