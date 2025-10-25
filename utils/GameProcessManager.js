@@ -46,6 +46,10 @@ class GameProcessManager {
           NODE_ENV: process.env.NODE_ENV || 'development',
           GAME_PROCESS_ID: processId,
           GAME_ID: gameId,
+          // Additional security: limit Node.js memory and disable warnings
+          NODE_OPTIONS: '--max-old-space-size=64', // Limit memory to 64MB
+          NODE_NO_WARNINGS: '1',
+          NODE_DISABLE_COLORS: '1',
           // Explicitly exclude sensitive variables:
           // - MONGODB_URI (database credentials)
           // - SESSION_SECRET (server encryption key)

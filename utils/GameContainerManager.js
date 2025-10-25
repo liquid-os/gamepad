@@ -173,6 +173,10 @@ class GameContainerManager {
     const GameProcessManager = require('./GameProcessManager');
     const processManager = GameProcessManager;
     
+    // Set up the process manager with required dependencies
+    processManager.setLobbyDataProvider(this.getLobbyData);
+    processManager.setIOInstance(io);
+    
     // Store the process manager for this lobby
     this.activeContainers.set(lobbyId, {
       type: 'render-process',
