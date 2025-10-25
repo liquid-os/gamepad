@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * GameProcessWrapper - Runs game code in child process with IPC communication
+ * GameProcessWrapper - Runs game code in container with WebSocket communication
  * 
  * Usage: node GameProcessWrapper.js <processId> <gameId>
  */
 
 const path = require('path');
 const fs = require('fs');
+const WebSocket = require('ws');
+const http = require('http');
 
 class GameProcessWrapper {
   constructor() {
@@ -16,6 +18,8 @@ class GameProcessWrapper {
     this.gameModule = null;
     this.lobbyData = null;
     this.isReady = false;
+    this.wss = null;
+    this.server = null;
 
     // Validate arguments
     if (!this.processId || !this.gameId) {
@@ -24,7 +28,7 @@ class GameProcessWrapper {
     }
 
     this.setupErrorHandling();
-    this.setupIPC();
+    this.setupWebSocketServer();
     this.loadGameModule();
   }
 
@@ -55,11 +59,44 @@ class GameProcessWrapper {
   }
 
   /**
-   * Setup IPC communication with main server
+   * Setup WebSocket server for communication with main server
    */
-  setupIPC() {
-    process.on('message', (message) => {
-      this.handleMainServerMessage(message);
+  setupWebSocketServer() {
+    // Create HTTP server
+    this.server = http.createServer();
+    
+    // Create WebSocket server
+    this.wss = new WebSocket.Server({ 
+      server: this.server,
+      port: 3000
+    });
+
+    this.wss.on('connection', (ws) => {
+      console.log(`[GameProcessWrapper:${this.processId}] WebSocket client connected`);
+      
+      ws.on('message', (data) => {
+        try {
+          const message = JSON.parse(data.toString());
+          this.handleMainServerMessage(message);
+        } catch (error) {
+          console.error(`[GameProcessWrapper:${this.processId}] Error parsing message:`, error);
+        }
+      });
+
+      ws.on('close', () => {
+        console.log(`[GameProcessWrapper:${this.processId}] WebSocket client disconnected`);
+      });
+
+      ws.on('error', (error) => {
+        console.error(`[GameProcessWrapper:${this.processId}] WebSocket error:`, error);
+      });
+
+      // Store WebSocket connection
+      this.ws = ws;
+    });
+
+    this.server.listen(3000, () => {
+      console.log(`[GameProcessWrapper:${this.processId}] WebSocket server listening on port 3000`);
     });
   }
 
@@ -370,14 +407,18 @@ class GameProcessWrapper {
    */
   sendToMainServer(type, data) {
     try {
-      process.send({
-        type,
-        data: {
-          processId: this.processId,
-          gameId: this.gameId,
-          ...data
-        }
-      });
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({
+          type,
+          data: {
+            processId: this.processId,
+            gameId: this.gameId,
+            ...data
+          }
+        }));
+      } else {
+        console.warn(`[GameProcessWrapper:${this.processId}] WebSocket not connected, cannot send message`);
+      }
     } catch (error) {
       console.error(`[GameProcessWrapper:${this.processId}] Error sending message to main server:`, error);
     }
@@ -388,6 +429,17 @@ class GameProcessWrapper {
    */
   shutdown() {
     console.log(`[GameProcessWrapper:${this.processId}] Shutting down gracefully`);
+    
+    // Close WebSocket server
+    if (this.wss) {
+      this.wss.close();
+    }
+    
+    // Close HTTP server
+    if (this.server) {
+      this.server.close();
+    }
+    
     process.exit(0);
   }
 }

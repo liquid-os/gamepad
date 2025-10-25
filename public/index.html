@@ -19,6 +19,8 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
       background: linear-gradient(135deg, #A7D3A6 0%, #F7EF81 100%);
       background: linear-gradient(135deg, #DA2359 0%, #ED4D50 100%);
+      background: radial-gradient(circle, white 20%, rgb(214, 211, 195) 100%);
+
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -86,9 +88,9 @@
       background: linear-gradient(135deg, #dee7e7 0%, #fffffa 100%);
       background: #1B2A41;
       border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 40px 60px rgba(0,0,0,0.5);
       padding: 40px;
-      max-width: 500px;
+      max-width: 600px;
       width: 90%;
     }
     
@@ -637,7 +639,9 @@
         <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
           <h3 style="font-size: 1.8em;" class="pixel-text">QUICK HOST</h3>
           <button id="quickHostBtn" class = "btn-primary" style="width: 100%; margin-top: 10px;">Host Lobby</button>
+          <button id="aboutBtn" class= "pixel-text" style="background: #6eb3d5; margin: 10px 0; max-width: 40%; font-size: 1.2em;" onclick="showAboutView()">What is BuddyBox?</button>
         </div>
+
       </div>
       
       <div id="registerForm" style="display: none;">
@@ -690,7 +694,19 @@
       
       <div style="display: flex; justify-content: center; align-items: center;">
         <button id="logoutBtn" class= "pixel-text" style="background: #dc3545; margin: 10px 0; max-width: 40%; font-size: 1.2em;">Logout</button>
+          <button id="aboutBtn1" class= "pixel-text" style="background: #6eb3d5; margin: 10px 0; max-width: 40%; font-size: 1.2em;" onclick="showAboutView()">What is BuddyBox</button>
       </div>
+  </div>
+
+  <div id="aboutView" style="display: none;">
+    
+    <h1 class="pixel-text" style="color: white; font-size: 2.5em;">What is BuddyBox?</h1>
+    <p class="pixel-text" style="color: white; font-size: 1.2em;">BuddyBox is a platform for hosting and playing party games with your friends.</p>
+    <p class="pixel-text" style="color: white; font-size: 1.2em;">It is a free and open-source platform for hosting and playing party games with your friends.</p>
+    <p class="pixel-text" style="color: white; font-size: 1.2em;">It is a free and open-source platform for hosting and playing party games with your friends.</p>
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <button id="aboutBtn1" class= "pixel-text" style="background: #6eb3d5; margin: 10px 0; max-width: 40%; font-size: 1.2em;" onclick="showHomeView()">Home</button>
+    </div>
   </div>
 
   <div id="lobbyView">
@@ -1078,6 +1094,7 @@
 
     const authView = document.getElementById('authView');
     const homeView = document.getElementById('homeView');
+    const aboutView = document.getElementById('aboutView');
     const lobbyView = document.getElementById('lobbyView');
     const gameView = document.getElementById('gameView');
     const gameEndView = document.getElementById('gameEndView');
@@ -1130,6 +1147,7 @@
     function showAuthView() {
       authView.style.display = 'block';
       homeView.style.display = 'none';
+      aboutView.style.display = 'none';
       lobbyView.style.display = 'none';
       gameView.style.display = 'none';
     }
@@ -1138,9 +1156,19 @@
       authView.style.display = 'none';
       homeView.style.display = 'block';
       lobbyView.style.display = 'none';
+      aboutView.style.display = 'none';
       gameView.style.display = 'none';
       gameEndView.style.display = 'none';
       userDisplayName.textContent = currentUser.username;
+    }
+
+    function showAboutView() {
+      authView.style.display = 'none';
+      homeView.style.display = 'none';
+      aboutView.style.display = 'block';
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      gameEndView.style.display = 'none';
     }
 
     // Login function

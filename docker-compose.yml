@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - USE_DOCKER=true
+      - NODE_ENV=production
+    networks:
+      - gamepad-internal
+    depends_on:
+      - game-base
+    restart: unless-stopped
+
+  game-base:
+    build:
+      context: .
+      dockerfile: Dockerfile.game-base
+    image: gamepad-game-base
+    networks:
+      - gamepad-internal
+    profiles:
+      - build-only
+
+networks:
+  gamepad-internal:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

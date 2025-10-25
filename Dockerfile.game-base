@@ -1,0 +1,25 @@
+FROM node:18-alpine
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Set working directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 gameuser && adduser -D -u 1001 -G gameuser gameuser
+
+# Copy wrapper script
+COPY utils/GameProcessWrapper.js ./wrapper.js
+
+# Change ownership to gameuser
+RUN chown -R gameuser:gameuser /app
+
+# Switch to non-root user
+USER gameuser
+
+# Use dumb-init as entrypoint for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command
+CMD ["node", "wrapper.js"]

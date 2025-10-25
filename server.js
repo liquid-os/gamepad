@@ -71,7 +71,14 @@ app.get('/creator', (req, res) => {
 
 // Import dynamic game loader and process manager
 const gameLoader = require('./utils/DynamicGameLoader');
-const gameProcessManager = require('./utils/GameProcessManager');
+
+// Feature flag for Docker containerization
+const USE_DOCKER = process.env.USE_DOCKER === 'true';
+const gameManager = USE_DOCKER 
+  ? require('./utils/GameContainerManager')
+  : require('./utils/GameProcessManager');
+
+console.log(`[Server] Using ${USE_DOCKER ? 'Docker containers' : 'child processes'} for game execution`);
 
 // Initialize game loader on server start
 gameLoader.initialize().then(() => {
@@ -79,6 +86,16 @@ gameLoader.initialize().then(() => {
 }).catch(error => {
   console.error('[Server] Failed to initialize game loader:', error);
 });
+
+// Initialize Docker container manager if using Docker
+if (USE_DOCKER) {
+  gameManager.initialize().then(() => {
+    console.log('[Server] Docker container manager initialized');
+  }).catch(error => {
+    console.error('[Server] Failed to initialize Docker:', error);
+    process.exit(1);
+  });
+}
 
 const lobbies = new Map(); // active lobbies
 const disconnectedPlayers = new Map(); // temporarily disconnected players
@@ -217,10 +234,10 @@ async function initializeGameLoader() {
 initializeGameLoader();
 
 // Set up GameProcessManager with lobby data provider and IO instance
-gameProcessManager.setLobbyDataProvider((lobbyId) => {
+gameManager.setLobbyDataProvider((lobbyId) => {
   return lobbies.get(lobbyId);
 });
-gameProcessManager.setIOInstance(io.of('/lobby'));
+gameManager.setIOInstance(io.of('/lobby'));
 
 // --- Utility: API object exposed to games ---
 function makeApi(io, lobby) {
@@ -644,7 +661,7 @@ io.of('/lobby').on('connection', socket => {
       console.log(`[DEBUG] Spawning game process for ${game.meta.name}`);
       const testGamePath = lobby.isTestLobby ? lobby.testGamePath : null;
       console.log(`[DEBUG] Test lobby: ${lobby.isTestLobby}, testGamePath: ${testGamePath}`);
-      const processInfo = await gameProcessManager.spawnGameProcess(code, gameId, lobby, io.of('/lobby'), testGamePath);
+      const processInfo = await gameManager.spawnGameProcess(code, gameId, lobby, io.of('/lobby'), testGamePath);
       
       console.log(`[DEBUG] Game process spawned: ${processInfo.processId}`);
 
@@ -652,7 +669,7 @@ io.of('/lobby').on('connection', socket => {
       console.log(`[DEBUG] Initializing ${lobby.players.length} players for game`);
       lobby.players.forEach(player => {
         console.log(`[DEBUG] Adding player ${player.username} to game`);
-        gameProcessManager.playerJoin(code, player);
+        gameManager.playerJoin(code, player);
       });
 
       // Send different events to host vs players
@@ -704,7 +721,7 @@ io.of('/lobby').on('connection', socket => {
     if (!player) return;
 
     // Forward action to game process
-    gameProcessManager.playerAction(code, player, data);
+    gameManager.playerAction(code, player, data);
   });
 
   // End lobby
@@ -713,8 +730,8 @@ io.of('/lobby').on('connection', socket => {
     if (!lobby) return;
 
     // Terminate game process if running
-    if (gameProcessManager.hasActiveProcess(code)) {
-      gameProcessManager.terminateProcess(code);
+    if (gameManager.hasActiveProcess(code)) {
+      gameManager.terminateProcess(code);
     }
 
     io.of('/lobby').to(code).emit('lobbyClosed');
@@ -868,8 +885,8 @@ io.of('/lobby').on('connection', socket => {
           lobby.players.splice(playerIndex, 1);
           
           // Notify game process about player disconnect
-          if (gameProcessManager.hasActiveProcess(code)) {
-            gameProcessManager.playerDisconnect(code, removedPlayer.id);
+          if (gameManager.hasActiveProcess(code)) {
+            gameManager.playerDisconnect(code, removedPlayer.id);
           }
           
           // Update player list for remaining players and host
@@ -977,12 +994,12 @@ server.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('[Server] Received SIGTERM, shutting down gracefully');
-  gameProcessManager.cleanup();
+  gameManager.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('[Server] Received SIGINT, shutting down gracefully');
-  gameProcessManager.cleanup();
+  gameManager.cleanup();
   process.exit(0);
 });
