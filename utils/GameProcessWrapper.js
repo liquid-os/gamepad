@@ -227,7 +227,7 @@ class GameProcessWrapper {
     // Block dangerous globals
     const dangerousGlobals = [
       'process', 'global', 'globalThis', '__dirname', '__filename',
-      'Buffer', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
+      'Buffer', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
     ];
 
     dangerousGlobals.forEach(globalName => {
@@ -251,17 +251,16 @@ class GameProcessWrapper {
       };
     });
 
-    // Provide safe console
+    // Provide safe console (silent no-ops)
     context.console = {
-      log: (...args) => {
-        console.log(`[Game:${this.gameId}]`, ...args);
-      },
-      error: (...args) => {
-        console.error(`[Game:${this.gameId}]`, ...args);
-      },
-      warn: (...args) => {
-        console.warn(`[Game:${this.gameId}]`, ...args);
-      }
+      log: () => {}, // Silent no-op
+      error: () => {}, // Silent no-op
+      warn: () => {}, // Silent no-op
+      info: () => {}, // Silent no-op
+      debug: () => {}, // Silent no-op
+      trace: () => {}, // Silent no-op
+      dir: () => {}, // Silent no-op
+      table: () => {} // Silent no-op
     };
 
     return context;
