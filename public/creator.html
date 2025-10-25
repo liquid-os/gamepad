@@ -424,6 +424,56 @@
       text-align: center;
     }
     
+    .validation-errors {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      border-left: 4px solid #dc3545;
+    }
+    
+    .validation-errors h4 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    
+    .validation-errors ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    .validation-errors li {
+      margin: 8px 0;
+      font-size: 0.95em;
+    }
+    
+    .validation-warnings {
+      background: #fff3cd;
+      color: #856404;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      border-left: 4px solid #ffc107;
+    }
+    
+    .validation-warnings h4 {
+      margin: 0 0 15px 0;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    
+    .validation-warnings ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    .validation-warnings li {
+      margin: 8px 0;
+      font-size: 0.95em;
+    }
+    
     .creator-info {
       background: #e9ecef;
       padding: 15px;
@@ -630,7 +680,7 @@
         </p>
       </div>
       
-      <form id="game-form">
+      <form id="game-form" novalidate>
         <div class="form-row">
           <div class="form-group">
             <label for="game-name">Game Name *</label>
@@ -656,7 +706,7 @@
         <div class="form-row">
           <div class="form-group">
             <label for="game-price">Price (USD)</label>
-            <input type="number" id="game-price" name="price" min="1.00" value="1.00" />
+            <input type="number" id="game-price" name="price" step="0.01" value="1.00" placeholder="0.00" min="0" inputmode="decimal" />
           </div>
           <div class="form-group">
             <label for="game-players">Players (min-max)</label>
@@ -670,6 +720,18 @@
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">
           Submit New Game
         </button>
+        
+        <!-- Validation Error Display -->
+        <div id="validation-errors" class="validation-errors" style="display: none;">
+          <h4>❌ Validation Errors</h4>
+          <ul id="error-list"></ul>
+        </div>
+        
+        <!-- Validation Warnings Display -->
+        <div id="validation-warnings" class="validation-warnings" style="display: none;">
+          <h4>⚠️ Warnings</h4>
+          <ul id="warning-list"></ul>
+        </div>
       </form>
     </div>
 
@@ -1124,9 +1186,19 @@
             showSection('games');
           }, 1500);
         } else {
-          showError(result.message);
-          if (result.errors) {
-            console.error('Validation errors:', result.errors);
+          // Clear any previous validation displays
+          hideValidationMessages();
+          
+          // Show specific validation errors if available
+          if (result.errors && result.errors.length > 0) {
+            showValidationErrors(result.errors);
+          } else {
+            showError(result.message);
+          }
+          
+          // Show warnings if available
+          if (result.warnings && result.warnings.length > 0) {
+            showValidationWarnings(result.warnings);
           }
         }
       } catch (error) {
@@ -1192,6 +1264,44 @@
       setTimeout(() => {
         successDiv.remove();
       }, 5000);
+    }
+    
+    function hideValidationMessages() {
+      const errorDiv = document.getElementById('validation-errors');
+      const warningDiv = document.getElementById('validation-warnings');
+      
+      if (errorDiv) errorDiv.style.display = 'none';
+      if (warningDiv) warningDiv.style.display = 'none';
+    }
+    
+    function showValidationErrors(errors) {
+      const errorDiv = document.getElementById('validation-errors');
+      const errorList = document.getElementById('error-list');
+      
+      if (errorDiv && errorList) {
+        errorList.innerHTML = '';
+        errors.forEach(error => {
+          const li = document.createElement('li');
+          li.textContent = error;
+          errorList.appendChild(li);
+        });
+        errorDiv.style.display = 'block';
+      }
+    }
+    
+    function showValidationWarnings(warnings) {
+      const warningDiv = document.getElementById('validation-warnings');
+      const warningList = document.getElementById('warning-list');
+      
+      if (warningDiv && warningList) {
+        warningList.innerHTML = '';
+        warnings.forEach(warning => {
+          const li = document.createElement('li');
+          li.textContent = warning;
+          warningList.appendChild(li);
+        });
+        warningDiv.style.display = 'block';
+      }
     }
 
     // Update game modal functions

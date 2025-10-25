@@ -673,7 +673,7 @@
       </div>
       <div id="joinSection" style="display: none;">
         <div class="input-group">
-          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" style = "margin-top: 5px;" maxlength="4" />
+          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" style = "margin-top: 5px;" maxlength="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         <button id="joinLobby" class = "btn-cool" style = "margin-top: 10px;">Join Lobby</button>
 
         </div>
@@ -1364,12 +1364,58 @@
     };
 
     // Enter key handlers for forms
+    document.getElementById('loginEmail').onkeypress = (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('loginPassword').focus();
+      }
+    };
+    
     document.getElementById('loginPassword').onkeypress = (e) => {
       if (e.key === 'Enter') login();
     };
     
+    document.getElementById('registerUsername').onkeypress = (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('registerEmail').focus();
+      }
+    };
+    
+    document.getElementById('registerEmail').onkeypress = (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('registerPassword').focus();
+      }
+    };
+    
     document.getElementById('registerPassword').onkeypress = (e) => {
       if (e.key === 'Enter') register();
+    };
+    
+    // Lobby code input Enter key support
+    document.getElementById('lobbyCode').onkeypress = (e) => {
+      if (e.key === 'Enter') {
+        const code = document.getElementById('lobbyCode').value.trim().toUpperCase();
+        if (!code) return alert('Enter lobby code!');
+        
+        // Create socket connection when joining lobby
+        socket = io('/lobby');
+        
+        // Make socket available to iframes
+        window.socket = socket;
+        
+        // Set up socket event listeners
+        setupSocketListeners();
+        
+        const username = currentUser ? currentUser.username : "GUEST";
+        const userId = currentUser ? currentUser.id : null;
+        socket.emit('joinLobby', { code, username, userId }, (res) => {
+          if (res?.error) return alert(res.error);
+          
+          currentLobbyCode = res.code;
+          myName = res.player.username;
+          showLobbyView();
+          onJoinLobby();
+        });
+      }
     };
 
     document.getElementById('createLobby').onclick = () => {
@@ -1379,8 +1425,16 @@
 
     document.getElementById('joinAsPlayer').onclick = () => {
       const joinSection = document.getElementById('joinSection');
-      joinSection.style.display = joinSection.style.display === 'none' ? 'block' : 'none';
-  };
+      const isHidden = joinSection.style.display === 'none';
+      joinSection.style.display = isHidden ? 'block' : 'none';
+      
+      // Focus the lobby code input when showing the section
+      if (isHidden) {
+        setTimeout(() => {
+          document.getElementById('lobbyCode').focus();
+        }, 100); // Small delay to ensure the input is visible
+      }
+    };
 
 
     document.getElementById('joinLobby').onclick = () => {

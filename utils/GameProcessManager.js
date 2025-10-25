@@ -40,14 +40,35 @@ class GameProcessManager {
         
         // Spawn child process with GameProcessWrapper
         const wrapperPath = path.join(__dirname, 'GameProcessWrapper.js');
+        
+        // SECURITY: Sanitize environment variables - only pass safe variables
+        const sanitizedEnv = {
+          NODE_ENV: process.env.NODE_ENV || 'development',
+          GAME_PROCESS_ID: processId,
+          GAME_ID: gameId,
+          // Explicitly exclude sensitive variables:
+          // - MONGODB_URI (database credentials)
+          // - SESSION_SECRET (server encryption key)
+          // - STRIPE_SECRET_KEY (payment processing)
+          // - STRIPE_WEBHOOK_SECRET (webhook validation)
+          // - Any other sensitive environment variables
+        };
+        
+        // SECURITY: Enhanced process isolation options
         const childProcess = spawn('node', [wrapperPath, processId, gameId], {
           stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
           cwd: gamePath,
-          env: {
-            ...process.env,
-            GAME_PROCESS_ID: processId,
-            GAME_ID: gameId
-          }
+          env: sanitizedEnv,
+          detached: false,
+          timeout: 30000, // Kill process after 30 seconds if unresponsive
+          // Additional security options
+          windowsHide: true, // Hide window on Windows
+          killSignal: 'SIGKILL', // Force kill if needed
+          // Process limits (where supported)
+          ...(process.platform !== 'win32' && {
+            uid: process.getuid ? process.getuid() : undefined,
+            gid: process.getgid ? process.getgid() : undefined
+          })
         });
 
         // Process info
@@ -74,6 +95,82 @@ class GameProcessManager {
         childProcess.on('error', (error) => {
           console.error(`[GameProcessManager] Process ${processId} error:`, error);
           this.handleProcessError(processInfo, error);
+        });
+
+        // SECURITY: Enhanced process monitoring and limits
+        let processStartTime = Date.now();
+        let messageCount = 0;
+        let lastActivityTime = Date.now();
+        
+        // Monitor process health and activity
+        const healthCheckInterval = setInterval(() => {
+          const now = Date.now();
+          const uptime = now - processStartTime;
+          const timeSinceLastActivity = now - lastActivityTime;
+          
+          // Kill process if it's been running too long (5 minutes max)
+          if (uptime > 300000) {
+            console.warn(`[GameProcessManager] Killing long-running process ${processId} (${uptime}ms uptime)`);
+            this.killProcess(processId, 'TIMEOUT');
+            clearInterval(healthCheckInterval);
+            return;
+          }
+          
+          // Kill process if it's been inactive too long (2 minutes)
+          if (timeSinceLastActivity > 120000) {
+            console.warn(`[GameProcessManager] Killing inactive process ${processId} (${timeSinceLastActivity}ms inactive)`);
+            this.killProcess(processId, 'INACTIVE');
+            clearInterval(healthCheckInterval);
+            return;
+          }
+          
+          // Kill process if it's sent too many messages (potential spam/attack)
+          if (messageCount > 1000) {
+            console.warn(`[GameProcessManager] Killing spammy process ${processId} (${messageCount} messages)`);
+            this.killProcess(processId, 'SPAM');
+            clearInterval(healthCheckInterval);
+            return;
+          }
+        }, 10000); // Check every 10 seconds
+
+        // Monitor stdout/stderr for suspicious activity
+        childProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          lastActivityTime = Date.now();
+          
+          // Check for suspicious output patterns
+          const suspiciousPatterns = [
+            /password/i,
+            /secret/i,
+            /key/i,
+            /token/i,
+            /env/i,
+            /process\.env/i,
+            /fs\./i,
+            /require\s*\(\s*['"`]fs['"`]/i
+          ];
+          
+          suspiciousPatterns.forEach(pattern => {
+            if (pattern.test(output)) {
+              console.warn(`[GameProcessManager] Suspicious output from ${processId}:`, output.substring(0, 100));
+              // Don't kill immediately, but log for monitoring
+            }
+          });
+        });
+
+        childProcess.stderr.on('data', (data) => {
+          const error = data.toString();
+          lastActivityTime = Date.now();
+          console.error(`[GameProcessManager] Process ${processId} stderr:`, error);
+        });
+
+        // Override message handler to track activity
+        const originalMessageHandler = childProcess.listeners('message')[0];
+        childProcess.removeAllListeners('message');
+        childProcess.on('message', (message) => {
+          messageCount++;
+          lastActivityTime = Date.now();
+          originalMessageHandler(message);
         });
 
         // Store process info
@@ -379,6 +476,25 @@ class GameProcessManager {
   // Method for server to set IO instance for error notifications
   setIOInstance(ioNamespace) {
     this.ioNamespace = ioNamespace;
+  }
+
+  /**
+   * Kill a specific process
+   */
+  killProcess(lobbyId, reason = 'MANUAL') {
+    const processInfo = this.activeProcesses.get(lobbyId);
+    if (processInfo) {
+      console.log(`[GameProcessManager] Killing process for lobby ${lobbyId} (reason: ${reason})`);
+      processInfo.process.kill('SIGTERM');
+      
+      // Force kill after 5 seconds if it doesn't exit gracefully
+      setTimeout(() => {
+        if (this.activeProcesses.has(lobbyId)) {
+          console.log(`[GameProcessManager] Force killing process for lobby ${lobbyId} (reason: ${reason})`);
+          processInfo.process.kill('SIGKILL');
+        }
+      }, 5000);
+    }
   }
 }
 

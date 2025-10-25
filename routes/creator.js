@@ -95,24 +95,14 @@ async function validateGameFile(buffer) {
             errors.push(`server.js missing required exports: ${missingExports.join(', ')}`);
           }
           
-          // Check for dangerous code patterns
-          const dangerousPatterns = [
-            /require\s*\(\s*['"`]fs['"`]\s*\)/,
-            /require\s*\(\s*['"`]child_process['"`]\s*\)/,
-            /require\s*\(\s*['"`]os['"`]\s*\)/,
-            /require\s*\(\s*['"`]net['"`]\s*\)/,
-            /require\s*\(\s*['"`]http['"`]\s*\)/,
-            /process\./,
-            /global\./,
-            /__dirname/,
-            /__filename/
-          ];
-          
-          dangerousPatterns.forEach(pattern => {
-            if (pattern.test(serverCode)) {
-              errors.push(`server.js contains dangerous code pattern: ${pattern.source}`);
-            }
-          });
+          // SECURITY: Validate game code for dangerous patterns
+          const codeValidation = validateGameCode(serverCode);
+          if (!codeValidation.valid) {
+            errors.push(...codeValidation.errors);
+          }
+          if (codeValidation.warnings.length > 0) {
+            warnings.push(...codeValidation.warnings);
+          }
         }
       } catch (error) {
         errors.push(`Error reading server.js: ${error.message}`);
@@ -287,19 +277,130 @@ function getMimeType(filename) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// Sanitize game code
-function sanitizeGameCode(code) {
-  // Remove potentially dangerous patterns
-  let sanitized = code;
+// SECURITY: Validate game code for dangerous patterns
+function validateGameCode(code) {
+  const errors = [];
+  const warnings = [];
   
-  // Remove comments that might contain dangerous code
-  sanitized = sanitized.replace(/\/\*[\s\S]*?\*\//g, '');
-  sanitized = sanitized.replace(/\/\/.*$/gm, '');
+  // Check for dangerous require statements
+  const dangerousRequires = [
+    'fs', 'child_process', 'os', 'net', 'http', 'https', 'crypto',
+    'path', 'util', 'stream', 'cluster', 'worker_threads', 'perf_hooks',
+    'v8', 'vm', 'repl', 'readline', 'tty', 'url', 'querystring'
+  ];
   
-  // Basic cleanup
-  sanitized = sanitized.trim();
+  dangerousRequires.forEach(module => {
+    const patterns = [
+      new RegExp(`require\\s*\\(\\s*['"\`]${module}['"\`]\\s*\\)`, 'gi'),
+      new RegExp(`import\\s+.*\\s+from\\s+['"\`]${module}['"\`]`, 'gi'),
+      new RegExp(`import\\s*['"\`]${module}['"\`]`, 'gi')
+    ];
+    
+    patterns.forEach(pattern => {
+      if (pattern.test(code)) {
+        errors.push(`Dangerous module import detected: ${module}. Games cannot access system modules.`);
+      }
+    });
+  });
   
-  return sanitized;
+  // Check for dangerous global access
+  const dangerousGlobals = [
+    'process', 'global', 'globalThis', '__dirname', '__filename',
+    'Buffer', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
+  ];
+  
+  dangerousGlobals.forEach(global => {
+    const patterns = [
+      new RegExp(`\\b${global}\\b`, 'g'),
+      new RegExp(`${global}\\.`, 'g')
+    ];
+    
+    patterns.forEach(pattern => {
+      if (pattern.test(code)) {
+        errors.push(`Dangerous global access detected: ${global}. Games cannot access system globals.`);
+      }
+    });
+  });
+  
+  // Check for code injection patterns
+  const injectionPatterns = [
+    /eval\s*\(/gi,
+    /Function\s*\(/gi,
+    /setTimeout\s*\(/gi,
+    /setInterval\s*\(/gi,
+    /new\s+Function\s*\(/gi,
+    /\.call\s*\(/gi,
+    /\.apply\s*\(/gi
+  ];
+  
+  injectionPatterns.forEach(pattern => {
+    if (pattern.test(code)) {
+      errors.push(`Code injection pattern detected: ${pattern.source}. Games cannot execute dynamic code.`);
+    }
+  });
+  
+  // Check for file system access attempts
+  const fsPatterns = [
+    /readFileSync/gi,
+    /writeFileSync/gi,
+    /readdirSync/gi,
+    /mkdirSync/gi,
+    /rmdirSync/gi,
+    /unlinkSync/gi,
+    /statSync/gi,
+    /accessSync/gi,
+    /chmodSync/gi,
+    /chownSync/gi
+  ];
+  
+  fsPatterns.forEach(pattern => {
+    if (pattern.test(code)) {
+      errors.push(`File system access detected: ${pattern.source}. Games cannot access the file system.`);
+    }
+  });
+  
+  // Check for network access attempts
+  const networkPatterns = [
+    /createServer/gi,
+    /createConnection/gi,
+    /request/gi,
+    /get/gi,
+    /post/gi,
+    /fetch/gi,
+    /XMLHttpRequest/gi,
+    /WebSocket/gi
+  ];
+  
+  networkPatterns.forEach(pattern => {
+    if (pattern.test(code)) {
+      errors.push(`Network access detected: ${pattern.source}. Games cannot make network requests.`);
+    }
+  });
+  
+  // Check for process manipulation
+  const processPatterns = [
+    /process\.exit/gi,
+    /process\.kill/gi,
+    /process\.spawn/gi,
+    /process\.exec/gi,
+    /process\.fork/gi,
+    /child_process/gi,
+    /spawn/gi,
+    /exec/gi,
+    /fork/gi
+  ];
+  
+  processPatterns.forEach(pattern => {
+    if (pattern.test(code)) {
+      errors.push(`Process manipulation detected: ${pattern.source}. Games cannot manipulate processes.`);
+    }
+  });
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings
+  };
 }
 
 // Promote user to creator

@@ -75,6 +75,9 @@ class GameProcessWrapper {
         throw new Error(`Game server file not found: ${serverPath}`);
       }
 
+      // SECURITY: Implement sandboxing before loading game module
+      this.setupSandbox();
+
       // Clear require cache to ensure fresh load
       delete require.cache[require.resolve(serverPath)];
       
@@ -97,6 +100,90 @@ class GameProcessWrapper {
       this.sendToMainServer('ERROR', { error: error.message });
       process.exit(1);
     }
+  }
+
+  /**
+   * SECURITY: Setup sandbox to prevent dangerous operations
+   */
+  setupSandbox() {
+    // Block dangerous modules
+    const blockedModules = [
+      'fs', 'child_process', 'os', 'net', 'http', 'https', 'crypto',
+      'path', 'util', 'stream', 'cluster', 'worker_threads', 'perf_hooks',
+      'v8', 'vm', 'repl', 'readline', 'tty', 'url', 'querystring',
+      'zlib', 'events', 'assert', 'buffer', 'timers', 'querystring'
+    ];
+
+    const originalRequire = require;
+    require = function(moduleName) {
+      if (blockedModules.includes(moduleName)) {
+        throw new Error(`SECURITY: Module '${moduleName}' is blocked in game sandbox`);
+      }
+      return originalRequire.apply(this, arguments);
+    };
+
+    // Block dangerous globals
+    const dangerousGlobals = [
+      'process', 'global', 'globalThis', '__dirname', '__filename',
+      'Buffer', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
+    ];
+
+    dangerousGlobals.forEach(globalName => {
+      if (global[globalName] !== undefined) {
+        Object.defineProperty(global, globalName, {
+          get: () => {
+            throw new Error(`SECURITY: Global '${globalName}' is blocked in game sandbox`);
+          },
+          set: () => {
+            throw new Error(`SECURITY: Global '${globalName}' is blocked in game sandbox`);
+          },
+          configurable: false,
+          enumerable: false
+        });
+      }
+    });
+
+    // Block dangerous functions
+    const dangerousFunctions = ['eval', 'Function'];
+    dangerousFunctions.forEach(funcName => {
+      if (global[funcName] !== undefined) {
+        global[funcName] = () => {
+          throw new Error(`SECURITY: Function '${funcName}' is blocked in game sandbox`);
+        };
+      }
+    });
+
+    // Override console to prevent information leakage
+    const originalConsole = console;
+    console = {
+      log: (...args) => {
+        // Only allow safe logging, block sensitive data
+        const safeArgs = args.map(arg => {
+          if (typeof arg === 'string' && (
+            arg.includes('password') || 
+            arg.includes('secret') || 
+            arg.includes('key') ||
+            arg.includes('token') ||
+            arg.includes('env')
+          )) {
+            return '[REDACTED]';
+          }
+          return arg;
+        });
+        originalConsole.log(`[GAME:${this.gameId}]`, ...safeArgs);
+      },
+      error: (...args) => {
+        originalConsole.error(`[GAME:${this.gameId}]`, ...args);
+      },
+      warn: (...args) => {
+        originalConsole.warn(`[GAME:${this.gameId}]`, ...args);
+      },
+      info: (...args) => {
+        originalConsole.info(`[GAME:${this.gameId}]`, ...args);
+      }
+    };
+
+    console.log(`[GameProcessWrapper:${this.processId}] Security sandbox initialized`);
   }
 
   /**
