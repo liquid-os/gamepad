@@ -20,6 +20,7 @@ class GameProcessWrapper {
     this.isReady = false;
     this.wss = null;
     this.server = null;
+    this.useWebSocket = process.env.USE_WEBSOCKET === 'true';
 
     // Validate arguments
     if (!this.processId || !this.gameId) {
@@ -28,7 +29,13 @@ class GameProcessWrapper {
     }
 
     this.setupErrorHandling();
-    this.setupWebSocketServer();
+    
+    if (this.useWebSocket) {
+      this.setupWebSocketServer();
+    } else {
+      this.setupIPC();
+    }
+    
     this.loadGameModule();
   }
 
@@ -59,6 +66,26 @@ class GameProcessWrapper {
   }
 
   /**
+   * Setup IPC communication with main server
+   */
+  setupIPC() {
+    console.log(`[GameProcessWrapper:${this.processId}] Setting up IPC communication`);
+    
+    // Listen for messages from main server
+    process.on('message', (message) => {
+      try {
+        this.handleMainServerMessage(message);
+      } catch (error) {
+        console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error);
+        this.sendToMainServer('ERROR', { error: error.message });
+      }
+    });
+
+    // Send ready signal
+    this.sendToMainServer('READY', { processId: this.processId });
+  }
+
+  /**
    * Setup WebSocket server for communication with main server
    */
   setupWebSocketServer() {
@@ -67,8 +94,7 @@ class GameProcessWrapper {
     
     // Create WebSocket server
     this.wss = new WebSocket.Server({ 
-      server: this.server,
-      port: 3000
+      server: this.server
     });
 
     this.wss.on('connection', (ws) => {
@@ -407,17 +433,34 @@ class GameProcessWrapper {
    */
   sendToMainServer(type, data) {
     try {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({
-          type,
-          data: {
-            processId: this.processId,
-            gameId: this.gameId,
-            ...data
-          }
-        }));
+      if (this.useWebSocket) {
+        // WebSocket communication
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({
+            type,
+            data: {
+              processId: this.processId,
+              gameId: this.gameId,
+              ...data
+            }
+          }));
+        } else {
+          console.warn(`[GameProcessWrapper:${this.processId}] WebSocket not connected, cannot send message`);
+        }
       } else {
-        console.warn(`[GameProcessWrapper:${this.processId}] WebSocket not connected, cannot send message`);
+        // IPC communication
+        if (process.send) {
+          process.send({
+            type,
+            data: {
+              processId: this.processId,
+              gameId: this.gameId,
+              ...data
+            }
+          });
+        } else {
+          console.warn(`[GameProcessWrapper:${this.processId}] IPC not available, cannot send message`);
+        }
       }
     } catch (error) {
       console.error(`[GameProcessWrapper:${this.processId}] Error sending message to main server:`, error);
@@ -430,14 +473,16 @@ class GameProcessWrapper {
   shutdown() {
     console.log(`[GameProcessWrapper:${this.processId}] Shutting down gracefully`);
     
-    // Close WebSocket server
-    if (this.wss) {
-      this.wss.close();
-    }
-    
-    // Close HTTP server
-    if (this.server) {
-      this.server.close();
+    if (this.useWebSocket) {
+      // Close WebSocket server
+      if (this.wss) {
+        this.wss.close();
+      }
+      
+      // Close HTTP server
+      if (this.server) {
+        this.server.close();
+      }
     }
     
     process.exit(0);
