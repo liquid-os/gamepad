@@ -366,19 +366,6 @@
         <div>Lobby Code</div>
         <div class="code-display" id="codeDisplay">----</div>
         <div style="font-size: 0.8em; opacity: 0.9;">Share this code with players</div>
-        <div id="testLobbyBadge" class="test-lobby-badge hidden">TEST LOBBY</div>
-      </div>
-
-      <div id="testLobbyInvites" class="test-lobby-invites hidden">
-        <h4>Invite Users to Test Lobby</h4>
-        <div class="invite-form">
-          <input type="text" id="inviteUsernames" placeholder="Enter usernames (comma-separated): username1, username2">
-          <button onclick="sendInvitations()">Send Invitations</button>
-        </div>
-        <div class="invited-users">
-          <h5>Invited Users:</h5>
-          <div id="invitedUsersList"></div>
-        </div>
       </div>
       
       <div class="host-controls">
@@ -430,56 +417,18 @@
 
     let currentCode = null;
     let currentGame = null;
-    let isTestLobby = false;
-    let testLobbyInfo = null;
-
-    // Check if this is a test lobby from session storage
-    const testLobbyData = sessionStorage.getItem('testLobby');
-    if (testLobbyData) {
-      try {
-        testLobbyInfo = JSON.parse(testLobbyData);
-        isTestLobby = true;
-        sessionStorage.removeItem('testLobby'); // Clear after reading
-      } catch (error) {
-        console.error('Failed to parse test lobby data:', error);
-      }
-    }
 
     // Create lobby as host
-    if (isTestLobby && testLobbyInfo) {
-      // Create test lobby
-      socket.emit('createLobby', { 
-        username: 'HOST', 
-        userId: null,
-        isTestLobby: true,
-        testGameId: testLobbyInfo.gameId,
-        testGamePath: testLobbyInfo.testGamePath
-      }, (res) => {
-        if (res?.error) {
-          alert(res.error);
-          return;
-        }
+    socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
 
-        currentCode = res.code;
-        codeDisplay.textContent = res.code;
-        console.log('Test lobby created with code:', res.code);
-        
-        // Show test lobby UI
-        showTestLobbyUI();
-      });
-    } else {
-      // Create normal lobby
-      socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
-        if (res?.error) {
-          alert(res.error);
-          return;
-        }
-
-        currentCode = res.code;
-        codeDisplay.textContent = res.code;
-        console.log('Host lobby created with code:', res.code);
-      });
-    }
+      currentCode = res.code;
+      codeDisplay.textContent = res.code;
+      console.log('Host lobby created with code:', res.code);
+    });
 
     socket.on('playerListUpdate', (players) => {
       playerList.innerHTML = '';
@@ -1037,62 +986,6 @@
       alert('Lobby was closed.');
       window.location.reload();
     });
-
-    // Test lobby functions
-    function showTestLobbyUI() {
-      const testLobbyBadge = document.getElementById('testLobbyBadge');
-      const testLobbyInvites = document.getElementById('testLobbyInvites');
-      
-      testLobbyBadge.classList.remove('hidden');
-      testLobbyInvites.classList.remove('hidden');
-      
-      // Update lobby code display to show it's a test lobby
-      const codeDisplay = document.getElementById('codeDisplay');
-      codeDisplay.style.border = '2px solid #ff6b35';
-    }
-
-    function sendInvitations() {
-      const usernamesInput = document.getElementById('inviteUsernames');
-      const usernames = usernamesInput.value.trim();
-      
-      if (!usernames) {
-        alert('Please enter at least one username');
-        return;
-      }
-      
-      socket.emit('inviteToTestLobby', { 
-        lobbyCode: currentCode, 
-        usernames: usernames 
-      }, (res) => {
-        if (res?.error) {
-          alert('Error: ' + res.error);
-          return;
-        }
-        
-        if (res.success) {
-          // Clear input
-          usernamesInput.value = '';
-          
-          // Update invited users list
-          updateInvitedUsersList(res.allAllowedUsernames);
-          
-          // Show success message
-          alert(`Successfully invited ${res.invitedUsernames.length} users: ${res.invitedUsernames.join(', ')}`);
-        }
-      });
-    }
-
-    function updateInvitedUsersList(allowedUsernames) {
-      const invitedUsersList = document.getElementById('invitedUsersList');
-      invitedUsersList.innerHTML = '';
-      
-      allowedUsernames.forEach(username => {
-        const userTag = document.createElement('span');
-        userTag.className = 'invited-user';
-        userTag.textContent = username;
-        invitedUsersList.appendChild(userTag);
-      });
-    }
   </script>
 </body>
 </html>

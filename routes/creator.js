@@ -306,7 +306,7 @@ function validateGameCode(code) {
   // Check for dangerous global access
   const dangerousGlobals = [
     'process', 'global', 'globalThis', '__dirname', '__filename',
-    'Buffer', 'console', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
+    'Buffer', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
   ];
   
   dangerousGlobals.forEach(global => {
@@ -1024,64 +1024,6 @@ router.post('/game/:gameId/submit', requireAuth, requireCreator, async (req, res
 });
 
 // Create test lobby for a game
-router.post('/game/:gameId/test-lobby', requireAuth, requireCreator, async (req, res) => {
-  try {
-    const { gameId } = req.params;
-    
-    // Check if game exists and user owns it
-    const game = await Game.findOne({ id: gameId, creatorId: req.user._id });
-    if (!game) {
-      return res.status(404).json({
-        success: false,
-        message: 'Game not found or you do not have permission to test it'
-      });
-    }
-    
-    // Determine test game path (use pending update if exists, otherwise use deployed version)
-    const gamesDir = path.join(__dirname, '..', 'games');
-    const updatePath = path.join(gamesDir, `${gameId}_update`);
-    const defaultPath = path.join(gamesDir, gameId);
-    
-    let testGamePath = gameId; // Default to main game folder
-    if (fs.existsSync(path.join(updatePath, 'server.js'))) {
-      testGamePath = `${gameId}_update`; // Use pending update if available
-    } else if (!fs.existsSync(path.join(defaultPath, 'server.js'))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Game files not found. Please deploy the game first.'
-      });
-    }
-    
-    // Generate unique lobby code
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let lobbyCode;
-    do {
-      lobbyCode = Array.from({ length: 4 }, () =>
-        chars[Math.floor(Math.random() * chars.length)]
-      ).join('');
-    } while (global.lobbies && global.lobbies.has && global.lobbies.has(lobbyCode));
-    
-    res.json({
-      success: true,
-      message: 'Test lobby created successfully!',
-      lobby: {
-        code: lobbyCode,
-        gameId: gameId,
-        testGamePath: testGamePath,
-        gameName: game.name,
-        hasPendingUpdate: game.hasPendingUpdate
-      }
-    });
-    
-  } catch (error) {
-    console.error('Create test lobby error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create test lobby'
-    });
-  }
-});
-
 // Helper function to deploy game update to pending folder
 async function deployGameUpdate(gameId, buffer) {
   try {

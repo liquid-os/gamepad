@@ -636,6 +636,16 @@
         <p>Loading creator information...</p>
       </div>
       
+      <!-- Development Guide Section -->
+      <div class="template-download-section">
+        <h3 style="margin-top: 0; margin-bottom: 15px;">🚀 Local Development Environment</h3>
+        <p>Want to develop and test your games locally? Check out our development environment repository!</p>
+        <a href="https://github.com/BuddyBoxTV/BuddyBox.dev" target="_blank" class="btn btn-secondary template-download-btn">
+          📚 View Development Guide
+        </a>
+        <p class="template-info">Clone the repository and set up your local development environment to test your games before uploading.</p>
+      </div>
+      
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card">
           <div class="stat-number" id="total-games">-</div>
@@ -660,13 +670,14 @@
     <div id="upload-section" class="content-section hidden">
       <h2>Create New Game</h2>
       
-      <!-- Download Template Button -->
+      <!-- Development Guide Section -->
       <div class="template-download-section">
-        <p>Need help getting started? Download our game template with all the required files and structure!</p>
-        <a href="/game-template.zip" download="game-template.zip" class="btn btn-secondary template-download-btn">
-          📥 Download Game Template
+        <h3 style="margin-top: 0; margin-bottom: 15px;">🚀 Local Development Environment</h3>
+        <p>Want to develop and test your games locally? Check out our development environment repository!</p>
+        <a href="https://github.com/BuddyBoxTV/BuddyBox.dev" target="_blank" class="btn btn-secondary template-download-btn">
+          📚 View Development Guide
         </a>
-        <p class="template-info">The template includes server.js, client files, and detailed documentation to help you create your game.</p>
+        <p class="template-info">Clone the repository and set up your local development environment to test your games before uploading.</p>
       </div>
       
       <div class="upload-area" id="upload-area">
@@ -929,7 +940,6 @@
           ${updateStatus}
           <div class="game-actions">
             <button class="btn btn-primary" onclick="openUpdateModal('${game.id}')">Update Game</button>
-            <button class="btn btn-info" onclick="startTestLobby('${game.id}')">Start Test Lobby</button>
             ${game.hasPendingUpdate && !game.submittedForApproval ? 
               `<button class="btn btn-success" onclick="submitForApproval('${game.id}')">Submit for Approval</button>` : ''}
             <button class="btn btn-secondary" onclick="editGame('${game.id}')">Edit</button>
@@ -1421,37 +1431,6 @@
       } catch (error) {
         console.error('Submit error:', error);
         showError('Failed to submit for approval');
-      }
-    }
-
-    async function startTestLobby(gameId) {
-      try {
-        const response = await fetch(`/api/creator/game/${gameId}/test-lobby`, {
-          method: 'POST'
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-          showSuccess('Test lobby created successfully!');
-          
-          // Store test lobby info in session storage
-          sessionStorage.setItem('testLobby', JSON.stringify({
-            code: result.lobby.code,
-            gameId: result.lobby.gameId,
-            testGamePath: result.lobby.testGamePath,
-            gameName: result.lobby.gameName,
-            hasPendingUpdate: result.lobby.hasPendingUpdate
-          }));
-          
-          // Redirect to host page
-          window.location.href = '/host.html';
-        } else {
-          showError(result.message);
-        }
-      } catch (error) {
-        console.error('Start test lobby error:', error);
-        showError('Failed to create test lobby');
       }
     }
 
