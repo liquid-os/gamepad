@@ -44,8 +44,12 @@ class GameProcessWrapper {
    */
   setupErrorHandling() {
     process.on('uncaughtException', (error) => {
-      console.error(`[GameProcessWrapper:${this.processId}] Uncaught exception:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Uncaught exception: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message, 
         stack: error.stack,
@@ -56,7 +60,9 @@ class GameProcessWrapper {
     });
 
     process.on('unhandledRejection', (reason, promise) => {
-      console.error(`[GameProcessWrapper:${this.processId}] Unhandled rejection:`, reason);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Unhandled rejection: ${reason}`;
+      process.stderr.write(errorMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: reason.toString(),
         processId: this.processId,
@@ -202,8 +208,14 @@ class GameProcessWrapper {
             // Execute the game function in the sandboxed context
             return this.gameModule[funcName].apply(sandboxedContext, args);
           } catch (error) {
-            console.error(`[GameProcessWrapper:${this.processId}] Error in game function ${funcName}:`, error.message);
-            console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+            // Log error safely without console.error to prevent circular references
+            const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function ${funcName}: ${error.message}`;
+            const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+            
+            // Use process.stderr.write instead of console.error to avoid circular reference issues
+            process.stderr.write(errorMessage + '\n');
+            process.stderr.write(stackMessage + '\n');
+            
             // Send error without including the full error object to prevent circular references
             this.sendToMainServer('ERROR', { 
               error: error.message,
@@ -270,17 +282,21 @@ class GameProcessWrapper {
       };
     });
 
-    // Provide safe console (silent no-ops)
-    context.console = {
-      log: () => {}, // Silent no-op
-      error: () => {}, // Silent no-op
-      warn: () => {}, // Silent no-op
-      info: () => {}, // Silent no-op
-      debug: () => {}, // Silent no-op
-      trace: () => {}, // Silent no-op
-      dir: () => {}, // Silent no-op
-      table: () => {} // Silent no-op
+    // Provide safe console (silent no-ops) - prevent circular references
+    const safeConsole = {
+      log: function() {},
+      error: function() {},
+      warn: function() {},
+      info: function() {},
+      debug: function() {},
+      trace: function() {},
+      dir: function() {},
+      table: function() {}
     };
+    
+    // Prevent any circular reference issues by freezing the console object
+    Object.freeze(safeConsole);
+    context.console = safeConsole;
 
     return context;
   }
@@ -315,8 +331,12 @@ class GameProcessWrapper {
           console.warn(`[GameProcessWrapper:${this.processId}] Unknown message type:`, message.type);
       }
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling message: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
@@ -348,8 +368,12 @@ class GameProcessWrapper {
       console.log(`[GameProcessWrapper:${this.processId}] Game initialized for lobby ${this.lobbyData.id}`);
       
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error initializing game:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error initializing game: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
@@ -376,8 +400,12 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player join:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player join: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
@@ -404,8 +432,12 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player action:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player action: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
@@ -431,8 +463,12 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player disconnect:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player disconnect: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
@@ -461,8 +497,12 @@ class GameProcessWrapper {
       this.shutdown();
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error ending game:`, error.message);
-      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      const errorMessage = `[GameProcessWrapper:${this.processId}] Error ending game: ${error.message}`;
+      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+      
+      process.stderr.write(errorMessage + '\n');
+      process.stderr.write(stackMessage + '\n');
+      
       this.sendToMainServer('ERROR', { 
         error: error.message,
         stack: error.stack,
