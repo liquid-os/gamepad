@@ -282,20 +282,17 @@ class GameProcessWrapper {
       };
     });
 
-    // Provide safe console (silent no-ops) - prevent circular references
-    const safeConsole = {
-      log: function() {},
-      error: function() {},
-      warn: function() {},
-      info: function() {},
-      debug: function() {},
-      trace: function() {},
-      dir: function() {},
-      table: function() {}
-    };
+    // Provide safe console using Proxy to completely bypass inspection
+    const safeConsole = new Proxy({}, {
+      get: function(target, prop) {
+        // Return a no-op function for any console method
+        return function() {
+          // Completely ignore all arguments and return immediately
+          return;
+        };
+      }
+    });
     
-    // Prevent any circular reference issues by freezing the console object
-    Object.freeze(safeConsole);
     context.console = safeConsole;
 
     return context;
