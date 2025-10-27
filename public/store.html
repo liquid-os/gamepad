@@ -229,7 +229,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      background: linear-gradient(transparent, rgba(0,0,0,0.5));
       color: white;
       padding: 10px;
       text-align: center;
@@ -674,6 +674,83 @@
       background: #6c757d;
       cursor: not-allowed;
     }
+
+    .review-toggle-btn {
+      background: #17a2b8;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+      margin-left: 10px;
+    }
+
+    .review-toggle-btn:hover {
+      background: #138496;
+    }
+
+    .review-form {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .review-field {
+      margin-bottom: 15px;
+    }
+
+    .review-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .review-field label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+
+    .review-field input,
+    .review-field textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 5px;
+      font-size: 0.9em;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    .review-field input:focus,
+    .review-field textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .review-field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .browse-reviews-btn {
+      background: #6f42c1;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8em;
+      margin-left: 10px;
+      transition: background 0.3s;
+    }
+
+    .browse-reviews-btn:hover {
+      background: #5a32a3;
+    }
   </style>
 </head>
 <body>
@@ -891,7 +968,7 @@
               <div class="game-image-container" onclick="openImageGallery('${game.id}')">
                 <img src="${logoSrc}" alt="${game.name}" class="game-logo">
                 <div class="image-overlay">
-                  <span class="gallery-indicator">📷 ${game.images ? game.images.length : 0} images</span>
+                  <span class="gallery-indicator">${game.images ? game.images.length : 0} images</span>
                 </div>
               </div>
             </div>
@@ -908,6 +985,11 @@
               <div class="rating-display">
                 <div class="stars">${ratingStars}</div>
                 <span class="rating-text">${ratingText}</span>
+                ${game.totalRatings > 0 ? `
+                  <button onclick="viewGameReviews('${game.id}')" class="browse-reviews-btn">
+                    Browse Reviews (${game.ratings ? game.ratings.filter(r => r.review && r.review.trim()).length : 0})
+                  </button>
+                ` : ''}
               </div>
               
               <div class="game-details">
@@ -925,9 +1007,22 @@
                     <div class="rating-stars" id="ratingStars-${game.id}">
                       ${renderRatingInput(game.id)}
                     </div>
+                    <button onclick="toggleReviewForm('${game.id}')" class="review-toggle-btn" id="reviewToggle-${game.id}">
+                      Write a Review
+                    </button>
                     <button onclick="submitRating('${game.id}')" class="rating-submit" id="ratingSubmit-${game.id}" disabled>
                       Rate Game
                     </button>
+                  </div>
+                  <div class="review-form" id="reviewForm-${game.id}" style="display: none;">
+                    <div class="review-field">
+                      <label for="reviewTitle-${game.id}">Review Title:</label>
+                      <input type="text" id="reviewTitle-${game.id}" placeholder="Enter a title for your review..." maxlength="100">
+                    </div>
+                    <div class="review-field">
+                      <label for="reviewText-${game.id}">Review:</label>
+                      <textarea id="reviewText-${game.id}" placeholder="Share your thoughts about this game..." rows="4" maxlength="1000"></textarea>
+                    </div>
                   </div>
                 </div>
               ` : ''}
@@ -988,12 +1083,37 @@
       submitBtn.dataset.rating = rating;
     }
 
+    function toggleReviewForm(gameId) {
+      const form = document.getElementById(`reviewForm-${gameId}`);
+      const toggleBtn = document.getElementById(`reviewToggle-${gameId}`);
+      
+      if (form.style.display === 'none') {
+        form.style.display = 'block';
+        toggleBtn.textContent = 'Hide Review Form';
+      } else {
+        form.style.display = 'none';
+        toggleBtn.textContent = 'Write a Review';
+      }
+    }
+
+    function viewGameReviews(gameId) {
+      window.location.href = `/game.html?id=${gameId}`;
+    }
+
     async function submitRating(gameId) {
       const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
       const rating = parseInt(submitBtn.dataset.rating);
+      const reviewTitle = document.getElementById(`reviewTitle-${gameId}`).value.trim();
+      const reviewText = document.getElementById(`reviewText-${gameId}`).value.trim();
       
       if (!rating || rating < 1 || rating > 5) {
         alert('Please select a rating');
+        return;
+      }
+
+      // Validate review fields - if review text is provided, title must also be provided
+      if (reviewText && !reviewTitle) {
+        alert('Please provide a title for your review');
         return;
       }
       
@@ -1003,13 +1123,22 @@
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ rating })
+          body: JSON.stringify({ 
+            rating,
+            reviewTitle,
+            review: reviewText
+          })
         });
         
         const data = await response.json();
         
         if (data.success) {
           alert('Rating submitted successfully!');
+          // Clear the form
+          document.getElementById(`reviewTitle-${gameId}`).value = '';
+          document.getElementById(`reviewText-${gameId}`).value = '';
+          document.getElementById(`reviewForm-${gameId}`).style.display = 'none';
+          document.getElementById(`reviewToggle-${gameId}`).textContent = 'Write a Review';
           // Refresh the game store to show updated ratings
           await performSearch();
         } else {

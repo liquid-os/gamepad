@@ -44,14 +44,24 @@ class GameProcessWrapper {
    */
   setupErrorHandling() {
     process.on('uncaughtException', (error) => {
-      console.error(`[GameProcessWrapper:${this.processId}] Uncaught exception:`, error);
-      this.sendToMainServer('ERROR', { error: error.message, stack: error.stack });
+      console.error(`[GameProcessWrapper:${this.processId}] Uncaught exception:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message, 
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
       process.exit(1);
     });
 
     process.on('unhandledRejection', (reason, promise) => {
       console.error(`[GameProcessWrapper:${this.processId}] Unhandled rejection:`, reason);
-      this.sendToMainServer('ERROR', { error: reason.toString() });
+      this.sendToMainServer('ERROR', { 
+        error: reason.toString(),
+        processId: this.processId,
+        gameId: this.gameId
+      });
     });
 
     process.on('SIGTERM', () => {
@@ -192,7 +202,16 @@ class GameProcessWrapper {
             // Execute the game function in the sandboxed context
             return this.gameModule[funcName].apply(sandboxedContext, args);
           } catch (error) {
-            console.error(`[GameProcessWrapper:${this.processId}] Error in game function ${funcName}:`, error);
+            console.error(`[GameProcessWrapper:${this.processId}] Error in game function ${funcName}:`, error.message);
+            console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+            // Send error without including the full error object to prevent circular references
+            this.sendToMainServer('ERROR', { 
+              error: error.message,
+              stack: error.stack,
+              function: funcName,
+              processId: this.processId,
+              gameId: this.gameId
+            });
             throw error;
           }
         };
@@ -296,8 +315,14 @@ class GameProcessWrapper {
           console.warn(`[GameProcessWrapper:${this.processId}] Unknown message type:`, message.type);
       }
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -323,8 +348,14 @@ class GameProcessWrapper {
       console.log(`[GameProcessWrapper:${this.processId}] Game initialized for lobby ${this.lobbyData.id}`);
       
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error initializing game:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error initializing game:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -345,8 +376,14 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player join:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player join:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -367,8 +404,14 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player action:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player action:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -388,8 +431,14 @@ class GameProcessWrapper {
       }
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error handling player disconnect:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player disconnect:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -412,8 +461,14 @@ class GameProcessWrapper {
       this.shutdown();
 
     } catch (error) {
-      console.error(`[GameProcessWrapper:${this.processId}] Error ending game:`, error);
-      this.sendToMainServer('ERROR', { error: error.message });
+      console.error(`[GameProcessWrapper:${this.processId}] Error ending game:`, error.message);
+      console.error(`[GameProcessWrapper:${this.processId}] Stack trace:`, error.stack);
+      this.sendToMainServer('ERROR', { 
+        error: error.message,
+        stack: error.stack,
+        processId: this.processId,
+        gameId: this.gameId
+      });
     }
   }
 
@@ -421,26 +476,32 @@ class GameProcessWrapper {
    * Create API object for game module
    */
   createApiObject() {
+    // Create isolated API object to prevent circular references during inspection
+    const processId = this.processId;
+    const gameId = this.gameId;
+    const lobbyData = this.lobbyData;
+    const sendToMainServer = this.sendToMainServer.bind(this);
+    
     return {
-      sendToAll: (event, data) => {
-        this.sendToMainServer('SEND_TO_ALL', { event, data });
+      sendToAll: function(event, data) {
+        sendToMainServer('SEND_TO_ALL', { event, data });
       },
       
-      sendToPlayer: (playerId, event, data) => {
-        this.sendToMainServer('SEND_TO_PLAYER', { playerId, event, data });
+      sendToPlayer: function(playerId, event, data) {
+        sendToMainServer('SEND_TO_PLAYER', { playerId, event, data });
       },
       
-      sendToHost: (event, data) => {
-        this.sendToMainServer('SEND_TO_HOST', { event, data });
+      sendToHost: function(event, data) {
+        sendToMainServer('SEND_TO_HOST', { event, data });
       },
       
-      setState: (state) => {
-        this.lobbyData.state = state;
-        this.sendToMainServer('SET_STATE', { state });
+      setState: function(state) {
+        lobbyData.state = state;
+        sendToMainServer('SET_STATE', { state });
       },
       
-      getState: () => {
-        return this.lobbyData.state;
+      getState: function() {
+        return lobbyData.state;
       }
     };
   }

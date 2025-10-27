@@ -219,7 +219,7 @@ router.post('/lobby-available', requireAuth, async (req, res) => {
 router.post('/rate/:gameId', requireAuth, async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { rating, review } = req.body;
+    const { rating, reviewTitle, review } = req.body;
     const userId = req.session.userId;
 
     // Validate rating
@@ -227,6 +227,14 @@ router.post('/rate/:gameId', requireAuth, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Rating must be between 1 and 5'
+      });
+    }
+
+    // Validate review fields - if review text is provided, title must also be provided
+    if (review && review.trim() && (!reviewTitle || !reviewTitle.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Review title is required when providing review text'
       });
     }
 
@@ -240,7 +248,7 @@ router.post('/rate/:gameId', requireAuth, async (req, res) => {
     }
 
     // Add or update rating
-    await game.addRating(userId, rating, review || '');
+    await game.addRating(userId, rating, reviewTitle || '', review || '');
 
     res.json({
       success: true,
@@ -258,6 +266,42 @@ router.post('/rate/:gameId', requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to rate game'
+    });
+  }
+});
+
+// Get game details with reviews
+router.get('/game/:gameId', async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    
+    const game = await Game.findOne({ id: gameId, isActive: true })
+      .populate('ratings.userId', 'username')
+      .select('-__v');
+    
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    // Sort reviews by date (newest first)
+    const sortedRatings = game.ratings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      game: {
+        ...game.toObject(),
+        ratings: sortedRatings
+      }
+    });
+
+  } catch (error) {
+    console.error('Get game details error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get game details'
     });
   }
 });

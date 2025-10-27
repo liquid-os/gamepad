@@ -247,7 +247,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      background: linear-gradient(transparent, rgba(0,0,0,0.4));
       color: white;
       padding: 10px;
       text-align: center;
@@ -276,6 +276,11 @@
       font-weight: bold;
       color: #333;
       margin: 0;
+      transition: color 0.3s;
+    }
+
+    .game-title:hover {
+      color: #007bff;
     }
 
     .game-status {
@@ -718,13 +723,13 @@
               <div class="game-image-container">
                 <img src="${logoSrc}" alt="${game.name}" class="game-logo">
                 <div class="image-overlay">
-                  <span class="gallery-indicator">📷 ${game.images ? game.images.length : 0} images</span>
+                  <span class="gallery-indicator">${game.images ? game.images.length : 0} images</span>
                 </div>
               </div>
             </div>
             <div class="game-info-section">
               <div class="game-header">
-                <h3 class="game-title">${game.name}</h3>
+                <h3 class="game-title" onclick="viewGameDetails('${game.id}')" style="cursor: pointer;">${game.name}</h3>
                 <div class="game-status ${statusClass}">
                   ${statusText}
                 </div>
@@ -743,7 +748,7 @@
               </div>
               
               <div class="game-actions">
-                <button onclick="playGame('${game.id}')" class="play-btn">🎮 Play Game</button>
+                <button onclick="hostLobby('${game.id}')" class="play-btn">Host Lobby</button>
                 <button onclick="viewGameDetails('${game.id}')" class="view-details-btn">ℹ️ Details</button>
               </div>
             </div>
@@ -770,17 +775,14 @@
       return stars;
     }
 
-    function playGame(gameId) {
-      // Redirect to home page to start a lobby with this game
-      window.location.href = `/?game=${gameId}`;
+    function hostLobby(gameId) {
+      // Redirect to host page
+      window.location.href = `/host.html?game=${gameId}`;
     }
 
     function viewGameDetails(gameId) {
-      // For now, just show an alert. Could be expanded to show a modal
-      const game = currentLibraryGames.find(g => g.id === gameId);
-      if (game) {
-        alert(`Game: ${game.name}\nDescription: ${game.description}\nPlayers: ${game.minPlayers}-${game.maxPlayers}\nCategory: ${game.category}`);
-      }
+      // Redirect to game details page
+      window.location.href = `/game.html?id=${gameId}`;
     }
 
     function showError(message) {

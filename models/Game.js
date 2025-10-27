@@ -72,6 +72,10 @@ const gameSchema = new mongoose.Schema({
       min: 1,
       max: 5
     },
+    reviewTitle: {
+      type: String,
+      default: ''
+    },
     review: {
       type: String,
       default: ''
@@ -206,7 +210,7 @@ gameSchema.methods.updateAverageRating = function() {
 };
 
 // Method to add or update a rating
-gameSchema.methods.addRating = async function(userId, rating, review = '') {
+gameSchema.methods.addRating = async function(userId, rating, reviewTitle = '', review = '') {
   // Remove existing rating from this user
   this.ratings = this.ratings.filter(r => !r.userId.equals(userId));
   
@@ -214,6 +218,7 @@ gameSchema.methods.addRating = async function(userId, rating, review = '') {
   this.ratings.push({
     userId,
     rating,
+    reviewTitle,
     review
   });
   
