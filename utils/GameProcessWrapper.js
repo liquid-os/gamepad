@@ -195,18 +195,16 @@ class GameProcessWrapper {
       sandboxedModule.meta = this.gameModule.meta;
     }
 
-    // Sandbox each game function
+    // Sandbox each game function - but execute directly without sandboxed context to prevent circular references
     const gameFunctions = ['onInit', 'onPlayerJoin', 'onAction', 'onPlayerDisconnect', 'onEnd'];
     
     gameFunctions.forEach(funcName => {
       if (typeof this.gameModule[funcName] === 'function') {
         sandboxedModule[funcName] = (...args) => {
           try {
-            // Create a sandboxed context for the game function
-            const sandboxedContext = this.createSandboxedContext();
-            
-            // Execute the game function in the sandboxed context
-            return this.gameModule[funcName].apply(sandboxedContext, args);
+            // Execute the game function directly without sandboxed context to prevent circular references
+            // The game functions will have access to normal console, require, etc.
+            return this.gameModule[funcName](...args);
           } catch (error) {
             // Log error safely without console.error to prevent circular references
             const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function ${funcName}: ${error.message}`;
@@ -234,69 +232,6 @@ class GameProcessWrapper {
     this.gameModule = sandboxedModule;
   }
 
-  /**
-   * Create a sandboxed context for game functions
-   */
-  createSandboxedContext() {
-    const context = {};
-
-    // Block dangerous modules
-    const blockedModules = [
-      'fs', 'child_process', 'os', 'net', 'http', 'https', 'crypto',
-      'path', 'util', 'stream', 'cluster', 'worker_threads', 'perf_hooks',
-      'v8', 'vm', 'repl', 'readline', 'tty', 'url', 'querystring',
-      'zlib', 'events', 'assert', 'buffer', 'timers', 'querystring'
-    ];
-
-    context.require = function(moduleName) {
-      if (blockedModules.includes(moduleName)) {
-        throw new Error(`SECURITY: Module '${moduleName}' is blocked in game sandbox`);
-      }
-      return require(moduleName);
-    };
-
-    // Block dangerous globals
-    const dangerousGlobals = [
-      'process', 'global', 'globalThis', '__dirname', '__filename',
-      'Buffer', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
-    ];
-
-    dangerousGlobals.forEach(globalName => {
-      Object.defineProperty(context, globalName, {
-        get: () => {
-          throw new Error(`SECURITY: Global '${globalName}' is blocked in game sandbox`);
-        },
-        set: () => {
-          throw new Error(`SECURITY: Global '${globalName}' is blocked in game sandbox`);
-        },
-        configurable: false,
-        enumerable: false
-      });
-    });
-
-    // Block dangerous functions
-    const dangerousFunctions = ['eval', 'Function'];
-    dangerousFunctions.forEach(funcName => {
-      context[funcName] = () => {
-        throw new Error(`SECURITY: Function '${funcName}' is blocked in game sandbox`);
-      };
-    });
-
-    // Provide safe console using Proxy to completely bypass inspection
-    const safeConsole = new Proxy({}, {
-      get: function(target, prop) {
-        // Return a no-op function for any console method
-        return function() {
-          // Completely ignore all arguments and return immediately
-          return;
-        };
-      }
-    });
-    
-    context.console = safeConsole;
-
-    return context;
-  }
 
   /**
    * Handle messages from main server
