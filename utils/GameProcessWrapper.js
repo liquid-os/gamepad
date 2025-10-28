@@ -187,49 +187,9 @@ class GameProcessWrapper {
   applySandboxToGameModule() {
     if (!this.gameModule) return;
 
-    // Create a sandboxed version of the game module
-    const sandboxedModule = {};
-
-    // Copy meta information (safe)
-    if (this.gameModule.meta) {
-      sandboxedModule.meta = this.gameModule.meta;
-    }
-
-    // Sandbox each game function - but execute directly without sandboxed context to prevent circular references
-    const gameFunctions = ['onInit', 'onPlayerJoin', 'onAction', 'onPlayerDisconnect', 'onEnd'];
-    
-    gameFunctions.forEach(funcName => {
-      if (typeof this.gameModule[funcName] === 'function') {
-        sandboxedModule[funcName] = (...args) => {
-          try {
-            // Execute the game function directly without sandboxed context to prevent circular references
-            // The game functions will have access to normal console, require, etc.
-            return this.gameModule[funcName](...args);
-          } catch (error) {
-            // Log error safely without console.error to prevent circular references
-            const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function ${funcName}: ${error.message}`;
-            const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-            
-            // Use process.stderr.write instead of console.error to avoid circular reference issues
-            process.stderr.write(errorMessage + '\n');
-            process.stderr.write(stackMessage + '\n');
-            
-            // Send error without including the full error object to prevent circular references
-            this.sendToMainServer('ERROR', { 
-              error: error.message,
-              stack: error.stack,
-              function: funcName,
-              processId: this.processId,
-              gameId: this.gameId
-            });
-            throw error;
-          }
-        };
-      }
-    });
-
-    // Replace the original module with sandboxed version
-    this.gameModule = sandboxedModule;
+    // No sandboxing needed - just use the original game module directly
+    // This prevents circular references and allows normal console access
+    console.log(`[GameProcessWrapper:${this.processId}] Game module loaded without sandboxing for ${this.gameId}`);
   }
 
 
@@ -289,9 +249,26 @@ class GameProcessWrapper {
       // Create API object for game module
       const api = this.createApiObject();
 
-      // Initialize game
+      // Initialize game with error handling
       if (typeof this.gameModule.onInit === 'function') {
-        this.gameModule.onInit(this.lobbyData, api);
+        try {
+          this.gameModule.onInit(this.lobbyData, api);
+        } catch (error) {
+          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onInit: ${error.message}`;
+          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+          
+          process.stderr.write(errorMessage + '\n');
+          process.stderr.write(stackMessage + '\n');
+          
+          this.sendToMainServer('ERROR', { 
+            error: error.message,
+            stack: error.stack,
+            function: 'onInit',
+            processId: this.processId,
+            gameId: this.gameId
+          });
+          throw error;
+        }
       }
 
       this.isReady = true;
@@ -328,7 +305,24 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onPlayerJoin === 'function') {
-        this.gameModule.onPlayerJoin(this.lobbyData, api, data.player);
+        try {
+          this.gameModule.onPlayerJoin(this.lobbyData, api, data.player);
+        } catch (error) {
+          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onPlayerJoin: ${error.message}`;
+          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+          
+          process.stderr.write(errorMessage + '\n');
+          process.stderr.write(stackMessage + '\n');
+          
+          this.sendToMainServer('ERROR', { 
+            error: error.message,
+            stack: error.stack,
+            function: 'onPlayerJoin',
+            processId: this.processId,
+            gameId: this.gameId
+          });
+          throw error;
+        }
       }
 
     } catch (error) {
@@ -360,7 +354,24 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onAction === 'function') {
-        this.gameModule.onAction(this.lobbyData, api, data.player, data.data);
+        try {
+          this.gameModule.onAction(this.lobbyData, api, data.player, data.data);
+        } catch (error) {
+          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onAction: ${error.message}`;
+          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+          
+          process.stderr.write(errorMessage + '\n');
+          process.stderr.write(stackMessage + '\n');
+          
+          this.sendToMainServer('ERROR', { 
+            error: error.message,
+            stack: error.stack,
+            function: 'onAction',
+            processId: this.processId,
+            gameId: this.gameId
+          });
+          throw error;
+        }
       }
 
     } catch (error) {
@@ -391,7 +402,24 @@ class GameProcessWrapper {
       // Game modules can implement onPlayerDisconnect if needed
       if (typeof this.gameModule.onPlayerDisconnect === 'function') {
         const api = this.createApiObject();
-        this.gameModule.onPlayerDisconnect(this.lobbyData, api, data.playerId);
+        try {
+          this.gameModule.onPlayerDisconnect(this.lobbyData, api, data.playerId);
+        } catch (error) {
+          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onPlayerDisconnect: ${error.message}`;
+          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+          
+          process.stderr.write(errorMessage + '\n');
+          process.stderr.write(stackMessage + '\n');
+          
+          this.sendToMainServer('ERROR', { 
+            error: error.message,
+            stack: error.stack,
+            function: 'onPlayerDisconnect',
+            processId: this.processId,
+            gameId: this.gameId
+          });
+          throw error;
+        }
       }
 
     } catch (error) {
@@ -422,7 +450,24 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onEnd === 'function') {
-        this.gameModule.onEnd(this.lobbyData, api);
+        try {
+          this.gameModule.onEnd(this.lobbyData, api);
+        } catch (error) {
+          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onEnd: ${error.message}`;
+          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
+          
+          process.stderr.write(errorMessage + '\n');
+          process.stderr.write(stackMessage + '\n');
+          
+          this.sendToMainServer('ERROR', { 
+            error: error.message,
+            stack: error.stack,
+            function: 'onEnd',
+            processId: this.processId,
+            gameId: this.gameId
+          });
+          throw error;
+        }
       }
 
       console.log(`[GameProcessWrapper:${this.processId}] Game ended for lobby ${this.lobbyData.id}`);
