@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
@@ -353,6 +354,118 @@
       padding: 40px;
     }
 
+    .rating-section {
+      margin: 10px 0;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .rating-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      flex-wrap: wrap;
+    }
+
+    .rating-stars {
+      display: flex;
+      gap: 5px;
+    }
+
+    .rating-star {
+      font-size: 1.5em;
+      color: #e9ecef;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .rating-star:hover,
+    .rating-star.active {
+      color: #ffc107;
+    }
+
+    .rating-submit {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+
+    .rating-submit:hover {
+      background: #218838;
+    }
+
+    .rating-submit:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .review-toggle-btn {
+      background: #17a2b8;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+
+    .review-toggle-btn:hover {
+      background: #138496;
+    }
+
+    .review-form {
+      margin-top: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .review-field {
+      margin-bottom: 15px;
+    }
+
+    .review-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .review-field label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+      font-size: 0.9em;
+    }
+
+    .review-field input,
+    .review-field textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 5px;
+      font-size: 0.9em;
+      font-family: inherit;
+      transition: border-color 0.3s;
+      box-sizing: border-box;
+    }
+
+    .review-field input:focus,
+    .review-field textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .review-field textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
     .loading {
       text-align: center;
       padding: 50px;
@@ -477,6 +590,7 @@
     let currentGame = null;
     let currentGalleryImages = [];
     let currentImageIndex = 0;
+    let currentUser = null;
 
     // Get game ID from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -485,7 +599,22 @@
     if (!gameId) {
       showError('Game ID not provided');
     } else {
-      loadGameDetails();
+      checkAuthStatus();
+    }
+
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+        }
+        loadGameDetails();
+      } catch (error) {
+        console.error('Auth check error:', error);
+        loadGameDetails();
+      }
     }
 
     async function loadGameDetails() {
@@ -519,8 +648,20 @@
         `${currentGame.averageRating.toFixed(1)} (${currentGame.totalRatings} review${currentGame.totalRatings !== 1 ? 's' : ''})` : 
         'No ratings yet';
 
-      // Count reviews with text
+      // Filter reviews to only show ones with text
       const reviewsWithText = currentGame.ratings.filter(r => r.review && r.review.trim()).length;
+      const textReviews = currentGame.ratings.filter(r => r.review && r.review.trim());
+      
+      // Check if user owns game
+      const userOwnsGame = currentGame.userOwnsGame || false;
+      
+      // Check if user already has a rating
+      let userRating = null;
+      if (currentUser && currentGame.ratings) {
+        userRating = currentGame.ratings.find(r => 
+          r.userId && (typeof r.userId === 'object' ? r.userId._id : r.userId).toString() === currentUser._id.toString()
+        );
+      }
 
       gameContent.innerHTML = `
         <div class="game-details-card">
@@ -542,9 +683,10 @@
               </div>
               
               <div class="game-actions">
-                <button onclick="purchaseWithStripe('${currentGame.id}')" class="purchase-btn">
-                  Buy for $${usdPrice}
-                </button>
+                ${userOwnsGame ? 
+                  `<button class="owned-btn">✅ Owned</button>` :
+                  `<button onclick="purchaseWithStripe('${currentGame.id}')" class="purchase-btn">Buy for $${usdPrice}</button>`
+                }
               </div>
             </div>
           </div>
@@ -564,16 +706,46 @@
           ` : ''}
         </div>
         
+        ${userOwnsGame ? `
+          <div class="reviews-section">
+            <h3 class="reviews-title">Write a Review</h3>
+            ${userRating ? `<p style="color: #666; margin-bottom: 15px;">You already have a review. Submitting a new review will replace your existing one.</p>` : ''}
+            <div class="rating-section">
+              <div class="rating-input">
+                <div class="rating-stars" id="ratingStars-${currentGame.id}">
+                  ${renderRatingInput(currentGame.id)}
+                </div>
+                <button onclick="toggleReviewForm('${currentGame.id}')" class="review-toggle-btn" id="reviewToggle-${currentGame.id}">
+                  Write a Review
+                </button>
+                <button onclick="submitRating('${currentGame.id}')" class="rating-submit" id="ratingSubmit-${currentGame.id}" disabled>
+                  Rate Game
+                </button>
+              </div>
+              <div class="review-form" id="reviewForm-${currentGame.id}" style="display: none;">
+                <div class="review-field">
+                  <label for="reviewTitle-${currentGame.id}">Review Title:</label>
+                  <input type="text" id="reviewTitle-${currentGame.id}" placeholder="Enter a title for your review..." maxlength="100" value="${userRating && userRating.reviewTitle ? userRating.reviewTitle : ''}">
+                </div>
+                <div class="review-field">
+                  <label for="reviewText-${currentGame.id}">Review:</label>
+                  <textarea id="reviewText-${currentGame.id}" placeholder="Share your thoughts about this game..." rows="4" maxlength="1000">${userRating && userRating.review ? userRating.review : ''}</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+        
         <div class="reviews-section">
           <h3 class="reviews-title">
             📝 Reviews (${reviewsWithText})
           </h3>
           
-          ${currentGame.ratings && currentGame.ratings.length > 0 ? `
-            ${currentGame.ratings.map(rating => `
+          ${textReviews.length > 0 ? `
+            ${textReviews.map(rating => `
               <div class="review-item">
                 <div class="review-header">
-                  <span class="review-author">${rating.userId.username || 'Anonymous'}</span>
+                  <span class="review-author">${rating.userId && rating.userId.username ? rating.userId.username : 'Anonymous'}</span>
                   <span class="review-date">${new Date(rating.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div class="review-rating">${renderStars(rating.rating)}</div>
@@ -586,6 +758,21 @@
           `}
         </div>
       `;
+      
+      // Set existing rating if user has one
+      if (userRating) {
+        const stars = document.querySelectorAll(`#ratingStars-${currentGame.id} .rating-star`);
+        stars.forEach((star, index) => {
+          if (index < userRating.rating) {
+            star.classList.add('active');
+          }
+        });
+        const submitBtn = document.getElementById(`ratingSubmit-${currentGame.id}`);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.dataset.rating = userRating.rating;
+        }
+      }
 
       // Store images for gallery
       if (currentGame.images && currentGame.images.length > 0) {
@@ -609,6 +796,90 @@
         stars += '<span class="star empty">★</span>';
       }
       return stars;
+    }
+
+    function renderRatingInput(gameId) {
+      let stars = '';
+      for (let i = 1; i <= 5; i++) {
+        stars += `<span class="rating-star" data-rating="${i}" onclick="setRating('${gameId}', ${i})">★</span>`;
+      }
+      return stars;
+    }
+
+    function setRating(gameId, rating) {
+      const stars = document.querySelectorAll(`#ratingStars-${gameId} .rating-star`);
+      const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
+      
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.dataset.rating = rating;
+      }
+    }
+
+    function toggleReviewForm(gameId) {
+      const form = document.getElementById(`reviewForm-${gameId}`);
+      const toggleBtn = document.getElementById(`reviewToggle-${gameId}`);
+      
+      if (form.style.display === 'none') {
+        form.style.display = 'block';
+        toggleBtn.textContent = 'Hide Review Form';
+      } else {
+        form.style.display = 'none';
+        toggleBtn.textContent = 'Write a Review';
+      }
+    }
+
+    async function submitRating(gameId) {
+      const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
+      const rating = parseInt(submitBtn.dataset.rating);
+      const reviewTitle = document.getElementById(`reviewTitle-${gameId}`).value.trim();
+      const reviewText = document.getElementById(`reviewText-${gameId}`).value.trim();
+      
+      if (!rating || rating < 1 || rating > 5) {
+        alert('Please select a rating');
+        return;
+      }
+
+      // Validate review fields - if review text is provided, title must also be provided
+      if (reviewText && !reviewTitle) {
+        alert('Please provide a title for your review');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/games/rate/${gameId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            rating,
+            reviewTitle,
+            review: reviewText
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Rating submitted successfully!');
+          // Reload game details to show updated review
+          await loadGameDetails();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Rating error:', error);
+        alert('Failed to submit rating');
+      }
     }
 
     function openImageGallery(index) {

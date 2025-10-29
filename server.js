@@ -56,13 +56,6 @@ app.use('/api/admin', require('./routes/admin'));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/games', express.static(path.join(__dirname, 'games')));
-app.use('/game-logos', express.static(path.join(__dirname, 'public/game-logos')));
-
-// Explicit favicon route for better caching
-app.get('/favicon.ico', (req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
-});
 
 // Serve creator dashboard
 app.get('/creator', (req, res) => {
@@ -71,32 +64,7 @@ app.get('/creator', (req, res) => {
 
 // Import dynamic game loader and process manager
 const gameLoader = require('./utils/DynamicGameLoader');
-
-// Feature flag for Docker containerization
-const USE_DOCKER = process.env.USE_DOCKER === 'true';
-const gameManager = USE_DOCKER 
-  ? require('./utils/GameContainerManager')
-  : require('./utils/GameProcessManager');
-
-console.log(`[Server] Using ${USE_DOCKER ? 'Docker containers' : 'child processes'} for game execution`);
-
-// Initialize game loader on server start
-gameLoader.initialize().then(() => {
-  console.log('[Server] Game loader initialized successfully');
-}).catch(error => {
-  console.error('[Server] Failed to initialize game loader:', error);
-});
-
-// Initialize Docker container manager if using Docker
-if (USE_DOCKER) {
-  gameManager.initialize().then(() => {
-    console.log('[Server] Docker container manager initialized');
-  }).catch(error => {
-    console.error('[Server] Failed to initialize Docker:', error);
-    console.log('[Server] Falling back to child process mode');
-    // Don't exit - fall back to child process mode
-  });
-}
+const gameProcessManager = require('./utils/GameProcessManager');
 
 const lobbies = new Map(); // active lobbies
 const disconnectedPlayers = new Map(); // temporarily disconnected players
@@ -111,7 +79,6 @@ async function getAvailableGamesForUser(userId) {
 
     // Import User model
     const User = require('./models/User');
-    const Game = require('./models/Game');
     
     // Get user and their accessible games (owned + free)
     const user = await User.findById(userId).select('ownedGames freeGames');
@@ -120,45 +87,13 @@ async function getAvailableGamesForUser(userId) {
       return [];
     }
 
-    // Get all accessible games for this user (approved only)
+    // Get all accessible games for this user
     const accessibleGames = user.getAllAccessibleGames();
-    
-    // Add creator's own games (even if unapproved)
-    const creatorGames = await Game.find({ 
-      creatorId: userId,
-      isActive: true 
-    }).select('id');
-    
-    const creatorGameIds = creatorGames.map(g => g.id);
-    
-    // Merge and deduplicate
-    const allGameIds = [...new Set([...accessibleGames, ...creatorGameIds])];
 
     // Return game metadata for accessible games
-    return allGameIds.map(gameId => {
+    return accessibleGames.map(gameId => {
       const game = gameLoader.getGame(gameId);
-      if (game) {
-        return game.meta;
-      } else {
-        // For creator's unapproved games, get metadata from database
-        const gameDoc = creatorGames.find(g => g.id === gameId);
-        if (gameDoc) {
-          // Load creator's unapproved game metadata
-          return {
-            id: gameId,
-            name: gameDoc.name || gameId,
-            description: gameDoc.description || '',
-            minPlayers: gameDoc.minPlayers || 2,
-            maxPlayers: gameDoc.maxPlayers || 8,
-            category: gameDoc.category || 'strategy',
-            price: gameDoc.price || 0,
-            approved: gameDoc.approved,
-            creatorId: gameDoc.creatorId,
-            creatorName: 'You'
-          };
-        }
-      }
-      return null;
+      return game ? game.meta : null;
     }).filter(Boolean);
 
   } catch (error) {
@@ -235,10 +170,10 @@ async function initializeGameLoader() {
 initializeGameLoader();
 
 // Set up GameProcessManager with lobby data provider and IO instance
-gameManager.setLobbyDataProvider((lobbyId) => {
+gameProcessManager.setLobbyDataProvider((lobbyId) => {
   return lobbies.get(lobbyId);
 });
-gameManager.setIOInstance(io.of('/lobby'));
+gameProcessManager.setIOInstance(io.of('/lobby'));
 
 // --- Utility: API object exposed to games ---
 function makeApi(io, lobby) {
@@ -403,8 +338,6 @@ io.of('/lobby').on('connection', socket => {
 
   // Create a lobby (host is separate from players)
   socket.on('createLobby', async ({ username, userId }, callback) => {
-    console.log(`[DEBUG] createLobby called: userId=${userId}`);
-    
     const code = generateCode();
     const lobby = {
       id: code,
@@ -415,7 +348,6 @@ io.of('/lobby').on('connection', socket => {
       state: {},
       playerIds: [] // Store user IDs for game ownership checking
     };
-
     lobbies.set(code, lobby);
 
     console.log(`[DEBUG] Created lobby ${code} with host ${socket.id}`);
@@ -424,6 +356,7 @@ io.of('/lobby').on('connection', socket => {
     socket.join(code);
 
     // Get available games for this lobby
+    // If host has userId, use their games; otherwise use free games only
     let availableGames = [];
     if (userId) {
       availableGames = await getAvailableGamesForUser(userId);
@@ -573,27 +506,14 @@ io.of('/lobby').on('connection', socket => {
       return callback?.({ error: 'Only players can select games. The host cannot select games.' });
     }
 
-    let game = gameLoader.getGame(gameId);
-    
-    // If game not found, check if it's a creator's unapproved game
-    if (!game) {
-      const Game = require('./models/Game');
-      const gameDoc = await Game.findOne({ id: gameId });
-      
-      if (gameDoc && gameDoc.creatorId && gameDoc.creatorId.equals(userId)) {
-        // Load creator's unapproved game for testing
-        console.log(`[DEBUG] Loading creator's unapproved game ${gameId} for testing`);
-        game = await gameLoader.loadCreatorGame(gameId, userId);
-      }
-    }
-    
+    const game = gameLoader.getGame(gameId);
     if (!game) {
       console.log(`[DEBUG] Game not found: ${gameId}`);
       return callback?.({ error: 'Game not found' });
     }
 
-    // Game is available (either approved or creator's own game)
-    console.log(`[DEBUG] Game ${gameId} is available`);
+    // Game is already approved (only approved games are loaded by gameLoader)
+    console.log(`[DEBUG] Game ${gameId} is approved and available`);
 
     console.log(`[DEBUG] Starting game: ${game.meta.name}`);
     lobby.gameId = gameId;
@@ -601,7 +521,7 @@ io.of('/lobby').on('connection', socket => {
     try {
       // Spawn game process
       console.log(`[DEBUG] Spawning game process for ${game.meta.name}`);
-      const processInfo = await gameManager.spawnGameProcess(code, gameId, lobby, io.of('/lobby'), null);
+      const processInfo = await gameProcessManager.spawnGameProcess(code, gameId, lobby, io.of('/lobby'));
       
       console.log(`[DEBUG] Game process spawned: ${processInfo.processId}`);
 
@@ -609,7 +529,7 @@ io.of('/lobby').on('connection', socket => {
       console.log(`[DEBUG] Initializing ${lobby.players.length} players for game`);
       lobby.players.forEach(player => {
         console.log(`[DEBUG] Adding player ${player.username} to game`);
-        gameManager.playerJoin(code, player);
+        gameProcessManager.playerJoin(code, player);
       });
 
       // Send different events to host vs players
@@ -661,7 +581,7 @@ io.of('/lobby').on('connection', socket => {
     if (!player) return;
 
     // Forward action to game process
-    gameManager.playerAction(code, player, data);
+    gameProcessManager.playerAction(code, player, data);
   });
 
   // End lobby
@@ -670,8 +590,8 @@ io.of('/lobby').on('connection', socket => {
     if (!lobby) return;
 
     // Terminate game process if running
-    if (gameManager.hasActiveProcess(code)) {
-      gameManager.terminateProcess(code);
+    if (gameProcessManager.hasActiveProcess(code)) {
+      gameProcessManager.terminateProcess(code);
     }
 
     io.of('/lobby').to(code).emit('lobbyClosed');
@@ -716,7 +636,6 @@ io.of('/lobby').on('connection', socket => {
     });
   });
 
-  // Invite users to test lobby
   // Disconnect cleanup
   socket.on('disconnect', () => {
     console.log(`[DEBUG] Socket disconnected: ${socket.id} from ${socket.handshake.address}`);
@@ -787,8 +706,8 @@ io.of('/lobby').on('connection', socket => {
           lobby.players.splice(playerIndex, 1);
           
           // Notify game process about player disconnect
-          if (gameManager.hasActiveProcess(code)) {
-            gameManager.playerDisconnect(code, removedPlayer.id);
+          if (gameProcessManager.hasActiveProcess(code)) {
+            gameProcessManager.playerDisconnect(code, removedPlayer.id);
           }
           
           // Update player list for remaining players and host
@@ -836,36 +755,6 @@ io.of('/lobby').on('connection', socket => {
   });
 });
 
-// Debug route to check loaded games
-app.get('/debug/loaded-games', (req, res) => {
-  try {
-    const loadedGames = gameLoader.getAllGameMetadata();
-    res.json({
-      success: true,
-      count: gameLoader.getLoadedGamesCount(),
-      games: loadedGames
-    });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-});
-
-// Debug route to reload all games
-app.get('/debug/reload-games', async (req, res) => {
-  try {
-    await gameLoader.initialize();
-    const loadedGames = gameLoader.getAllGameMetadata();
-    res.json({
-      success: true,
-      message: 'Games reloaded successfully',
-      count: gameLoader.getLoadedGamesCount(),
-      games: loadedGames
-    });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-});
-
 // Temporary route to add trivia game to user adam
 app.get('/add-trivia', async (req, res) => {
   try {
@@ -896,12 +785,12 @@ server.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('[Server] Received SIGTERM, shutting down gracefully');
-  gameManager.cleanup();
+  gameProcessManager.cleanup();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('[Server] Received SIGINT, shutting down gracefully');
-  gameManager.cleanup();
+  gameProcessManager.cleanup();
   process.exit(0);
 });

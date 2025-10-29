@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
@@ -288,8 +289,8 @@
     }
     
     .games-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      display: flex;
+      flex-direction: column;
       gap: 20px;
     }
     
@@ -299,7 +300,14 @@
       padding: 20px;
       border: 1px solid #e9ecef;
       display: flex;
-      gap: 15px;
+      gap: 20px;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .game-card {
+        flex-direction: column;
+      }
     }
 
     .game-logo-section {
@@ -312,18 +320,29 @@
       object-fit: cover;
       border-radius: 8px;
     }
+
+    .game-info-section {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
     
     .game-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
     }
     
     .game-title {
       font-size: 1.2em;
       font-weight: bold;
       color: #333;
+      flex: 1;
+      min-width: 0;
     }
     
     .game-status {
@@ -331,6 +350,7 @@
       border-radius: 12px;
       font-size: 0.8em;
       font-weight: 600;
+      white-space: nowrap;
     }
     
     .status-pending {
@@ -348,18 +368,28 @@
       color: #721c24;
     }
     
+    .game-description {
+      color: #666;
+      margin: 10px 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
     .game-stats {
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
+      gap: 15px;
       margin: 10px 0;
       font-size: 0.9em;
       color: #666;
+      flex-wrap: wrap;
     }
     
     .game-actions {
       display: flex;
       gap: 10px;
       margin-top: 15px;
+      flex-wrap: wrap;
     }
     
     .btn {
@@ -609,6 +639,94 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
+
+    .image-upload-area {
+      border: 2px dashed #007bff;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .image-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .image-preview-item {
+      position: relative;
+      width: 100%;
+      padding-top: 100%; /* Square aspect ratio */
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e9ecef;
+      background: #f8f9fa;
+    }
+
+    .image-preview-item img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .image-preview-item .remove-image {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(220, 53, 69, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+
+    .image-preview-item .remove-image:hover {
+      background: #dc3545;
+    }
+
+    .image-preview-item .main-badge {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      background: rgba(40, 167, 69, 0.9);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      font-weight: 600;
+    }
+
+    .image-preview-item .set-main-btn {
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 123, 255, 0.9);
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7em;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .image-preview-item .set-main-btn:hover {
+      background: #007bff;
+    }
   </style>
 </head>
 <body>
@@ -728,6 +846,20 @@
           </div>
         </div>
         
+        <div class="form-group">
+          <label>Game Images (up to 6 images)</label>
+          <div id="image-upload-area" class="image-upload-area">
+            <div id="image-preview-grid" class="image-preview-grid"></div>
+            <input type="file" id="image-files" accept="image/*" multiple style="display: none;" />
+            <button type="button" class="upload-btn" onclick="document.getElementById('image-files').click()">
+              Add Images
+            </button>
+            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+              Upload up to 6 images. First image will be set as main image.
+            </p>
+          </div>
+        </div>
+        
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px;">
           Submit New Game
         </button>
@@ -771,55 +903,38 @@
     <div id="updateModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Update Game</h2>
+          <h2>Upload Game Update</h2>
           <span class="close" onclick="closeUpdateModal()">&times;</span>
         </div>
         <form id="updateGameForm">
           <input type="hidden" id="updateGameId" />
           
           <div class="form-group">
-            <label for="updateDescription">Description</label>
-            <textarea id="updateDescription" name="description" rows="3" placeholder="Game description"></textarea>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="updateMinPlayers">Min Players</label>
-              <input type="number" id="updateMinPlayers" name="minPlayers" min="1" max="20" />
-            </div>
-            <div class="form-group">
-              <label for="updateMaxPlayers">Max Players</label>
-              <input type="number" id="updateMaxPlayers" name="maxPlayers" min="1" max="20" />
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label for="updatePrice">Price (USD)</label>
-              <input type="number" id="updatePrice" name="price" min="0" step="0.01" placeholder="0.00" />
-            </div>
-            <div class="form-group">
-              <label for="updateCategory">Category</label>
-              <select id="updateCategory" name="category">
-                <option value="strategy">Strategy</option>
-                <option value="action">Action</option>
-                <option value="puzzle">Puzzle</option>
-                <option value="trivia">Trivia</option>
-                <option value="social">Social</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <label for="updateGameFile">Game Code (ZIP file)</label>
+            <label for="updateGameFile">Game Code Update (ZIP file) *</label>
             <input type="file" id="updateGameFile" name="gameFile" accept=".zip" />
-            <small>Optional: Upload new game code to create an update</small>
+            <small>Upload a new ZIP file containing your updated game code. Maximum file size: 200MB</small>
+            <div id="updateFileInfo" style="margin-top: 10px; color: #666; font-size: 0.9em;"></div>
+          </div>
+          
+          <p style="color: #666; margin: 20px 0;">
+            <strong>Note:</strong> After uploading, your update will be in pending state. You can submit it for admin approval once you're ready. The update will be extracted to a temporary directory and will replace the live game only after admin approval.
+          </p>
+          
+          <!-- Validation Errors Display -->
+          <div id="updateValidationErrors" class="validation-errors" style="display: none;">
+            <h4>❌ Validation Errors</h4>
+            <ul id="updateErrorList"></ul>
+          </div>
+          
+          <!-- Validation Warnings Display -->
+          <div id="updateValidationWarnings" class="validation-warnings" style="display: none;">
+            <h4>⚠️ Warnings</h4>
+            <ul id="updateWarningList"></ul>
           </div>
           
           <div class="form-actions">
             <button type="button" class="btn btn-secondary" onclick="closeUpdateModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Update Game</button>
+            <button type="submit" class="btn btn-primary">Upload Update</button>
           </div>
         </form>
       </div>
@@ -828,9 +943,92 @@
     <script>
     let currentUser = null;
     let currentSection = 'overview';
+    let selectedImages = []; // Array of {file, preview, isMain}
 
     // Check authentication and load data
     checkAuthStatus();
+    
+    // Image upload handling
+    document.getElementById('image-files').addEventListener('change', handleImageSelection);
+    
+    function handleImageSelection(e) {
+      const files = Array.from(e.target.files);
+      const remainingSlots = 6 - selectedImages.length;
+      
+      if (files.length > remainingSlots) {
+        alert(`You can only upload ${remainingSlots} more image(s). Maximum is 6 images.`);
+        files.splice(remainingSlots);
+      }
+      
+      files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const imageData = {
+              file: file,
+              preview: event.target.result,
+              isMain: selectedImages.length === 0 // First image is main by default
+            };
+            selectedImages.push(imageData);
+            updateImagePreview();
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+      
+      // Reset input
+      e.target.value = '';
+    }
+    
+    function updateImagePreview() {
+      const grid = document.getElementById('image-preview-grid');
+      grid.innerHTML = '';
+      
+      selectedImages.forEach((imageData, index) => {
+        const item = document.createElement('div');
+        item.className = 'image-preview-item';
+        item.innerHTML = `
+          <img src="${imageData.preview}" alt="Preview ${index + 1}">
+          <button type="button" class="remove-image" onclick="removeImage(${index})" title="Remove image">×</button>
+          ${imageData.isMain ? 
+            '<div class="main-badge">Main</div>' : 
+            '<button type="button" class="set-main-btn" onclick="setMainImage(${index})">Set as Main</button>'
+          }
+        `;
+        grid.appendChild(item);
+      });
+      
+      // Update button visibility
+      const addButton = document.querySelector('#image-upload-area .upload-btn');
+      if (selectedImages.length >= 6) {
+        addButton.disabled = true;
+        addButton.style.opacity = '0.6';
+        addButton.style.cursor = 'not-allowed';
+      } else {
+        addButton.disabled = false;
+        addButton.style.opacity = '1';
+        addButton.style.cursor = 'pointer';
+      }
+    }
+    
+    function removeImage(index) {
+      const wasMain = selectedImages[index].isMain;
+      selectedImages.splice(index, 1);
+      
+      // If main image was removed, set first image as main
+      if (wasMain && selectedImages.length > 0) {
+        selectedImages[0].isMain = true;
+      }
+      
+      updateImagePreview();
+    }
+    
+    function setMainImage(index) {
+      selectedImages.forEach((img, i) => {
+        img.isMain = (i === index);
+      });
+      updateImagePreview();
+    }
 
     async function checkAuthStatus() {
       try {
@@ -922,28 +1120,32 @@
         }
       }
       
+      const usdPrice = game.price ? `$${(game.price / 100).toFixed(2)}` : 'Free';
+      
       return `
         <div class="game-card">
           <div class="game-logo-section">
             <img src="${logoSrc}" alt="${game.name}" class="game-logo">
           </div>
-          <div class="game-header">
-            <div class="game-title">${game.name}</div>
-            <div class="game-status ${statusClass}">${statusText}</div>
-          </div>
-          <p style="color: #666; margin: 10px 0;">${game.description}</p>
-          <div class="game-stats">
-            <span>${game.price} USD</span>
-            <span>${game.minPlayers}-${game.maxPlayers}</span>
-            <span>${game.downloadCount} downloads</span>
-          </div>
-          ${updateStatus}
-          <div class="game-actions">
-            <button class="btn btn-primary" onclick="openUpdateModal('${game.id}')">Update Game</button>
-            ${game.hasPendingUpdate && !game.submittedForApproval ? 
-              `<button class="btn btn-success" onclick="submitForApproval('${game.id}')">Submit for Approval</button>` : ''}
-            <button class="btn btn-secondary" onclick="editGame('${game.id}')">Edit</button>
-            <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete</button>
+          <div class="game-info-section">
+            <div class="game-header">
+              <div class="game-title">${game.name}</div>
+              <div class="game-status ${statusClass}">${statusText}</div>
+            </div>
+            <p class="game-description">${game.description}</p>
+            <div class="game-stats">
+              <span>${usdPrice}</span>
+              <span>${game.minPlayers}-${game.maxPlayers} players</span>
+              <span>${game.downloadCount || 0} downloads</span>
+            </div>
+            ${updateStatus ? `<div style="margin: 10px 0;">${updateStatus}</div>` : ''}
+            <div class="game-actions">
+              <button class="btn btn-primary" onclick="openUpdateModal('${game.id}')">Update Game</button>
+              ${game.hasPendingUpdate && !game.submittedForApproval ? 
+                `<button class="btn btn-success" onclick="submitForApproval('${game.id}')">Submit for Approval</button>` : ''}
+              <button class="btn btn-secondary" onclick="editGame('${game.id}')">Edit</button>
+              <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete</button>
+            </div>
           </div>
         </div>
       `;
@@ -1147,13 +1349,19 @@
       const formData = new FormData();
       formData.append('gameFile', selectedFile);
       
+      // Add images to FormData
+      selectedImages.forEach((imageData, index) => {
+        formData.append('images', imageData.file);
+      });
+      
       const gameData = {
         name: document.getElementById('game-name').value,
         description: document.getElementById('game-description').value,
         price: Math.round(parseFloat(document.getElementById('game-price').value) * 100), // Convert USD to cents
         minPlayers: document.getElementById('game-min-players').value,
         maxPlayers: document.getElementById('game-max-players').value,
-        category: document.getElementById('game-category').value
+        category: document.getElementById('game-category').value,
+        mainImageIndex: selectedImages.findIndex(img => img.isMain)
       };
       
       formData.append('gameData', JSON.stringify(gameData));
@@ -1169,6 +1377,8 @@
         if (result.success) {
           showSuccess(result.message);
           document.getElementById('game-form').reset();
+          selectedFile = null;
+          selectedImages = [];
           document.getElementById('upload-area').innerHTML = `
             <p>📁 Drag and drop your game ZIP file here, or click to browse</p>
             <input type="file" id="game-file" accept=".zip" />
@@ -1179,6 +1389,9 @@
               Maximum file size: 200MB
             </p>
           `;
+          
+          // Reset image preview
+          document.getElementById('image-preview-grid').innerHTML = '';
           
           // Re-attach file input event listeners
           const newFileInput = document.getElementById('game-file');
@@ -1317,36 +1530,40 @@
     // Update game modal functions
     async function openUpdateModal(gameId) {
       try {
-        const response = await fetch(`/api/creator/game/${gameId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-          const game = data.game;
-          document.getElementById('updateGameId').value = gameId;
-          document.getElementById('updateDescription').value = game.description || '';
-          document.getElementById('updateMinPlayers').value = game.minPlayers || 2;
-          document.getElementById('updateMaxPlayers').value = game.maxPlayers || 8;
-          document.getElementById('updatePrice').value = (game.price / 100).toFixed(2); // Convert cents to USD
-          document.getElementById('updateCategory').value = game.category || 'strategy';
-          
-          document.getElementById('updateModal').style.display = 'block';
-        } else {
-          showError('Failed to load game details');
-        }
+        document.getElementById('updateGameId').value = gameId;
+        document.getElementById('updateModal').style.display = 'block';
       } catch (error) {
-        console.error('Failed to load game:', error);
-        showError('Failed to load game details');
+        console.error('Failed to open update modal:', error);
+        showError('Failed to open update modal');
       }
     }
 
     function closeUpdateModal() {
       document.getElementById('updateModal').style.display = 'none';
       document.getElementById('updateGameForm').reset();
+      document.getElementById('updateFileInfo').textContent = '';
+      document.getElementById('updateValidationErrors').style.display = 'none';
+      document.getElementById('updateValidationWarnings').style.display = 'none';
     }
+    
+    // File input change handler for update modal
+    document.getElementById('updateGameFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      const fileInfo = document.getElementById('updateFileInfo');
+      if (file) {
+        fileInfo.innerHTML = `✅ <strong>${file.name}</strong> selected (${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+      } else {
+        fileInfo.textContent = '';
+      }
+    });
 
     // Handle update form submission
     document.getElementById('updateGameForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // Hide previous validation messages
+      document.getElementById('updateValidationErrors').style.display = 'none';
+      document.getElementById('updateValidationWarnings').style.display = 'none';
       
       // Get the submit button and add loading state
       const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -1354,59 +1571,86 @@
       
       // Disable button and show loading spinner
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span class="loading-spinner"></span>Updating...';
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Uploading...';
       
       const gameId = document.getElementById('updateGameId').value;
-      const formData = new FormData(e.target);
+      const fileInput = document.getElementById('updateGameFile');
+      const file = fileInput.files[0];
+      
+      // Check if file is provided
+      if (!file) {
+        showError('Please select a ZIP file to upload');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('gameFile', file);
       
       try {
-        // If specifically uploading a new ZIP file, use the update endpoint
-        if (formData.get('gameFile') && formData.get('gameFile').size > 0) {
-          const response = await fetch(`/api/creator/game/${gameId}/update`, {
-            method: 'POST',
-            body: formData
-          });
+        const response = await fetch(`/api/creator/game/${gameId}/update`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess(result.message);
           
-          const result = await response.json();
-          
-          if (result.success) {
-            showSuccess('Game update uploaded successfully!');
-            closeUpdateModal();
-            loadMyGames();
-          } else {
-            showError(result.message);
+          // Show warnings if any
+          if (result.warnings && result.warnings.length > 0) {
+            const warningDiv = document.getElementById('updateValidationWarnings');
+            const warningList = document.getElementById('updateWarningList');
+            warningList.innerHTML = '';
+            result.warnings.forEach(warning => {
+              const li = document.createElement('li');
+              li.textContent = warning;
+              warningList.appendChild(li);
+            });
+            warningDiv.style.display = 'block';
           }
-        } else {
-          // Just update metadata
-          const updateData = {
-            description: formData.get('description'),
-            minPlayers: parseInt(formData.get('minPlayers')),
-            maxPlayers: parseInt(formData.get('maxPlayers')),
-            price: Math.round(parseFloat(formData.get('price')) * 100), // Convert USD to cents
-            category: formData.get('category')
-          };
           
-          const response = await fetch(`/api/creator/game/${gameId}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updateData)
-          });
-          
-          const result = await response.json();
-          
-          if (result.success) {
-            showSuccess('Game updated successfully!');
+          // Close modal and reload after a short delay
+          setTimeout(() => {
             closeUpdateModal();
             loadMyGames();
-          } else {
+          }, 2000);
+        } else {
+          // Show validation errors
+          if (result.errors && result.errors.length > 0) {
+            const errorDiv = document.getElementById('updateValidationErrors');
+            const errorList = document.getElementById('updateErrorList');
+            errorList.innerHTML = '';
+            result.errors.forEach(error => {
+              const li = document.createElement('li');
+              li.textContent = error;
+              errorList.appendChild(li);
+            });
+            errorDiv.style.display = 'block';
+          }
+          
+          // Show warnings if any
+          if (result.warnings && result.warnings.length > 0) {
+            const warningDiv = document.getElementById('updateValidationWarnings');
+            const warningList = document.getElementById('updateWarningList');
+            warningList.innerHTML = '';
+            result.warnings.forEach(warning => {
+              const li = document.createElement('li');
+              li.textContent = warning;
+              warningList.appendChild(li);
+            });
+            warningDiv.style.display = 'block';
+          }
+          
+          if (!result.errors || result.errors.length === 0) {
             showError(result.message);
           }
         }
       } catch (error) {
         console.error('Update error:', error);
-        showError('Failed to update game');
+        showError('Failed to upload update');
       } finally {
         // Reset button state
         submitBtn.disabled = false;

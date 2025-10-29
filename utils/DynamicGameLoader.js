@@ -102,95 +102,9 @@ class DynamicGameLoader {
     return this.games.get(gameId);
   }
 
-  // Load test game from custom path
-  async loadTestGame(gameId, testGamePath) {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      
-      const testPath = path.join(__dirname, '..', 'games', testGamePath);
-      const serverPath = path.join(testPath, 'server.js');
-      
-      if (!fs.existsSync(serverPath)) {
-        throw new Error(`Test game ${gameId} not found at ${serverPath}`);
-      }
-
-      // Clear require cache to ensure fresh load
-      delete require.cache[require.resolve(serverPath)];
-      
-      // Load game module
-      const gameModule = require(serverPath);
-      
-      if (!gameModule || typeof gameModule !== 'object') {
-        throw new Error('Game module must export an object');
-      }
-
-      if (!gameModule.meta) {
-        throw new Error('Game module missing meta information');
-      }
-
-      // Create game metadata with test path info
-      const gameData = {
-        id: gameId,
-        name: gameModule.meta.name || 'Test Game',
-        description: gameModule.meta.description || 'Test game for development',
-        minPlayers: gameModule.meta.minPlayers || 2,
-        maxPlayers: gameModule.meta.maxPlayers || 8,
-        category: gameModule.meta.category || 'test',
-        price: 0,
-        creatorId: null,
-        version: gameModule.meta.version || '1.0.0',
-        downloadCount: 0,
-        deployedAt: new Date(),
-        folderPath: testPath
-      };
-
-      const game = this.createGameMetadata(gameData);
-      this.games.set(gameId, game);
-
-      console.log(`[DynamicLoader] Loaded test game ${gameId} from ${testGamePath}`);
-      return game;
-
-    } catch (error) {
-      console.error(`[DynamicLoader] Failed to load test game ${gameId}:`, error);
-      throw error;
-    }
-  }
-
   // Get all loaded games
   getAllGames() {
     return Array.from(this.games.values());
-  }
-
-  // Load creator's unapproved game for testing
-  async loadCreatorGame(gameId, creatorId) {
-    try {
-      const Game = require('../models/Game');
-      const gameData = await Game.findOne({ id: gameId, creatorId: creatorId });
-      
-      if (gameData) {
-        const game = this.createGameMetadata(gameData);
-        this.games.set(gameId, game);
-        console.log(`[DynamicLoader] Loaded creator's game ${gameId} for testing`);
-        return game;
-      }
-      return null;
-    } catch (error) {
-      console.error(`[DynamicLoader] Failed to load creator's game ${gameId}:`, error);
-      return null;
-    }
-  }
-
-  // Check if game is accessible to creator
-  getGameForCreator(gameId, creatorId) {
-    const game = this.games.get(gameId);
-    if (game) {
-      return game;
-    }
-    
-    // Check if this is a creator's unapproved game
-    // This will be handled by the server when needed
-    return null;
   }
 
   // Get game metadata for all loaded games

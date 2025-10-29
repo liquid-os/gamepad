@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * GameProcessWrapper - Runs game code in container with WebSocket communication
+ * GameProcessWrapper - Runs game code in child process with IPC communication
  * 
  * Usage: node GameProcessWrapper.js <processId> <gameId>
  */
 
 const path = require('path');
 const fs = require('fs');
-const WebSocket = require('ws');
-const http = require('http');
 
 class GameProcessWrapper {
   constructor() {
@@ -18,9 +16,6 @@ class GameProcessWrapper {
     this.gameModule = null;
     this.lobbyData = null;
     this.isReady = false;
-    this.wss = null;
-    this.server = null;
-    this.useWebSocket = process.env.USE_WEBSOCKET === 'true';
 
     // Validate arguments
     if (!this.processId || !this.gameId) {
@@ -29,13 +24,7 @@ class GameProcessWrapper {
     }
 
     this.setupErrorHandling();
-    
-    if (this.useWebSocket) {
-      this.setupWebSocketServer();
-    } else {
-      this.setupIPC();
-    }
-    
+    this.setupIPC();
     this.loadGameModule();
   }
 
@@ -44,30 +33,14 @@ class GameProcessWrapper {
    */
   setupErrorHandling() {
     process.on('uncaughtException', (error) => {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Uncaught exception: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message, 
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Uncaught exception:`, error);
+      this.sendToMainServer('ERROR', { error: error.message, stack: error.stack });
       process.exit(1);
     });
 
     process.on('unhandledRejection', (reason, promise) => {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Unhandled rejection: ${reason}`;
-      process.stderr.write(errorMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: reason.toString(),
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Unhandled rejection:`, reason);
+      this.sendToMainServer('ERROR', { error: reason.toString() });
     });
 
     process.on('SIGTERM', () => {
@@ -85,60 +58,8 @@ class GameProcessWrapper {
    * Setup IPC communication with main server
    */
   setupIPC() {
-    console.log(`[GameProcessWrapper:${this.processId}] Setting up IPC communication`);
-    
-    // Listen for messages from main server
     process.on('message', (message) => {
-      try {
-        this.handleMainServerMessage(message);
-      } catch (error) {
-        console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error);
-        this.sendToMainServer('ERROR', { error: error.message });
-      }
-    });
-
-    // Send ready signal
-    this.sendToMainServer('READY', { processId: this.processId });
-  }
-
-  /**
-   * Setup WebSocket server for communication with main server
-   */
-  setupWebSocketServer() {
-    // Create HTTP server
-    this.server = http.createServer();
-    
-    // Create WebSocket server
-    this.wss = new WebSocket.Server({ 
-      server: this.server
-    });
-
-    this.wss.on('connection', (ws) => {
-      console.log(`[GameProcessWrapper:${this.processId}] WebSocket client connected`);
-      
-      ws.on('message', (data) => {
-        try {
-          const message = JSON.parse(data.toString());
-          this.handleMainServerMessage(message);
-        } catch (error) {
-          console.error(`[GameProcessWrapper:${this.processId}] Error parsing message:`, error);
-        }
-      });
-
-      ws.on('close', () => {
-        console.log(`[GameProcessWrapper:${this.processId}] WebSocket client disconnected`);
-      });
-
-      ws.on('error', (error) => {
-        console.error(`[GameProcessWrapper:${this.processId}] WebSocket error:`, error);
-      });
-
-      // Store WebSocket connection
-      this.ws = ws;
-    });
-
-    this.server.listen(3000, () => {
-      console.log(`[GameProcessWrapper:${this.processId}] WebSocket server listening on port 3000`);
+      this.handleMainServerMessage(message);
     });
   }
 
@@ -169,9 +90,6 @@ class GameProcessWrapper {
         throw new Error('Game module missing meta information');
       }
 
-      // SECURITY: Apply sandboxing to the loaded game module
-      this.applySandboxToGameModule();
-
       console.log(`[GameProcessWrapper:${this.processId}] Loaded game module for ${this.gameId}`);
       
     } catch (error) {
@@ -180,18 +98,6 @@ class GameProcessWrapper {
       process.exit(1);
     }
   }
-
-  /**
-   * Apply sandboxing to the loaded game module
-   */
-  applySandboxToGameModule() {
-    if (!this.gameModule) return;
-
-    // No sandboxing needed - just use the original game module directly
-    // This prevents circular references and allows normal console access
-    console.log(`[GameProcessWrapper:${this.processId}] Game module loaded without sandboxing for ${this.gameId}`);
-  }
-
 
   /**
    * Handle messages from main server
@@ -223,18 +129,8 @@ class GameProcessWrapper {
           console.warn(`[GameProcessWrapper:${this.processId}] Unknown message type:`, message.type);
       }
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling message: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling message:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -249,26 +145,9 @@ class GameProcessWrapper {
       // Create API object for game module
       const api = this.createApiObject();
 
-      // Initialize game with error handling
+      // Initialize game
       if (typeof this.gameModule.onInit === 'function') {
-        try {
-          this.gameModule.onInit(this.lobbyData, api);
-        } catch (error) {
-          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onInit: ${error.message}`;
-          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-          
-          process.stderr.write(errorMessage + '\n');
-          process.stderr.write(stackMessage + '\n');
-          
-          this.sendToMainServer('ERROR', { 
-            error: error.message,
-            stack: error.stack,
-            function: 'onInit',
-            processId: this.processId,
-            gameId: this.gameId
-          });
-          throw error;
-        }
+        this.gameModule.onInit(this.lobbyData, api);
       }
 
       this.isReady = true;
@@ -277,18 +156,8 @@ class GameProcessWrapper {
       console.log(`[GameProcessWrapper:${this.processId}] Game initialized for lobby ${this.lobbyData.id}`);
       
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error initializing game: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error initializing game:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -305,39 +174,12 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onPlayerJoin === 'function') {
-        try {
-          this.gameModule.onPlayerJoin(this.lobbyData, api, data.player);
-        } catch (error) {
-          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onPlayerJoin: ${error.message}`;
-          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-          
-          process.stderr.write(errorMessage + '\n');
-          process.stderr.write(stackMessage + '\n');
-          
-          this.sendToMainServer('ERROR', { 
-            error: error.message,
-            stack: error.stack,
-            function: 'onPlayerJoin',
-            processId: this.processId,
-            gameId: this.gameId
-          });
-          throw error;
-        }
+        this.gameModule.onPlayerJoin(this.lobbyData, api, data.player);
       }
 
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player join: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player join:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -354,39 +196,12 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onAction === 'function') {
-        try {
-          this.gameModule.onAction(this.lobbyData, api, data.player, data.data);
-        } catch (error) {
-          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onAction: ${error.message}`;
-          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-          
-          process.stderr.write(errorMessage + '\n');
-          process.stderr.write(stackMessage + '\n');
-          
-          this.sendToMainServer('ERROR', { 
-            error: error.message,
-            stack: error.stack,
-            function: 'onAction',
-            processId: this.processId,
-            gameId: this.gameId
-          });
-          throw error;
-        }
+        this.gameModule.onAction(this.lobbyData, api, data.player, data.data);
       }
 
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player action: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player action:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -402,39 +217,12 @@ class GameProcessWrapper {
       // Game modules can implement onPlayerDisconnect if needed
       if (typeof this.gameModule.onPlayerDisconnect === 'function') {
         const api = this.createApiObject();
-        try {
-          this.gameModule.onPlayerDisconnect(this.lobbyData, api, data.playerId);
-        } catch (error) {
-          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onPlayerDisconnect: ${error.message}`;
-          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-          
-          process.stderr.write(errorMessage + '\n');
-          process.stderr.write(stackMessage + '\n');
-          
-          this.sendToMainServer('ERROR', { 
-            error: error.message,
-            stack: error.stack,
-            function: 'onPlayerDisconnect',
-            processId: this.processId,
-            gameId: this.gameId
-          });
-          throw error;
-        }
+        this.gameModule.onPlayerDisconnect(this.lobbyData, api, data.playerId);
       }
 
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error handling player disconnect: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player disconnect:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -450,42 +238,15 @@ class GameProcessWrapper {
       const api = this.createApiObject();
       
       if (typeof this.gameModule.onEnd === 'function') {
-        try {
-          this.gameModule.onEnd(this.lobbyData, api);
-        } catch (error) {
-          const errorMessage = `[GameProcessWrapper:${this.processId}] Error in game function onEnd: ${error.message}`;
-          const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-          
-          process.stderr.write(errorMessage + '\n');
-          process.stderr.write(stackMessage + '\n');
-          
-          this.sendToMainServer('ERROR', { 
-            error: error.message,
-            stack: error.stack,
-            function: 'onEnd',
-            processId: this.processId,
-            gameId: this.gameId
-          });
-          throw error;
-        }
+        this.gameModule.onEnd(this.lobbyData, api);
       }
 
       console.log(`[GameProcessWrapper:${this.processId}] Game ended for lobby ${this.lobbyData.id}`);
       this.shutdown();
 
     } catch (error) {
-      const errorMessage = `[GameProcessWrapper:${this.processId}] Error ending game: ${error.message}`;
-      const stackMessage = `[GameProcessWrapper:${this.processId}] Stack trace: ${error.stack}`;
-      
-      process.stderr.write(errorMessage + '\n');
-      process.stderr.write(stackMessage + '\n');
-      
-      this.sendToMainServer('ERROR', { 
-        error: error.message,
-        stack: error.stack,
-        processId: this.processId,
-        gameId: this.gameId
-      });
+      console.error(`[GameProcessWrapper:${this.processId}] Error ending game:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
     }
   }
 
@@ -493,32 +254,26 @@ class GameProcessWrapper {
    * Create API object for game module
    */
   createApiObject() {
-    // Create isolated API object to prevent circular references during inspection
-    const processId = this.processId;
-    const gameId = this.gameId;
-    const lobbyData = this.lobbyData;
-    const sendToMainServer = this.sendToMainServer.bind(this);
-    
     return {
-      sendToAll: function(event, data) {
-        sendToMainServer('SEND_TO_ALL', { event, data });
+      sendToAll: (event, data) => {
+        this.sendToMainServer('SEND_TO_ALL', { event, data });
       },
       
-      sendToPlayer: function(playerId, event, data) {
-        sendToMainServer('SEND_TO_PLAYER', { playerId, event, data });
+      sendToPlayer: (playerId, event, data) => {
+        this.sendToMainServer('SEND_TO_PLAYER', { playerId, event, data });
       },
       
-      sendToHost: function(event, data) {
-        sendToMainServer('SEND_TO_HOST', { event, data });
+      sendToHost: (event, data) => {
+        this.sendToMainServer('SEND_TO_HOST', { event, data });
       },
       
-      setState: function(state) {
-        lobbyData.state = state;
-        sendToMainServer('SET_STATE', { state });
+      setState: (state) => {
+        this.lobbyData.state = state;
+        this.sendToMainServer('SET_STATE', { state });
       },
       
-      getState: function() {
-        return lobbyData.state;
+      getState: () => {
+        return this.lobbyData.state;
       }
     };
   }
@@ -528,35 +283,14 @@ class GameProcessWrapper {
    */
   sendToMainServer(type, data) {
     try {
-      if (this.useWebSocket) {
-        // WebSocket communication
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify({
-            type,
-            data: {
-              processId: this.processId,
-              gameId: this.gameId,
-              ...data
-            }
-          }));
-        } else {
-          console.warn(`[GameProcessWrapper:${this.processId}] WebSocket not connected, cannot send message`);
+      process.send({
+        type,
+        data: {
+          processId: this.processId,
+          gameId: this.gameId,
+          ...data
         }
-      } else {
-        // IPC communication
-        if (process.send) {
-          process.send({
-            type,
-            data: {
-              processId: this.processId,
-              gameId: this.gameId,
-              ...data
-            }
-          });
-        } else {
-          console.warn(`[GameProcessWrapper:${this.processId}] IPC not available, cannot send message`);
-        }
-      }
+      });
     } catch (error) {
       console.error(`[GameProcessWrapper:${this.processId}] Error sending message to main server:`, error);
     }
@@ -567,19 +301,6 @@ class GameProcessWrapper {
    */
   shutdown() {
     console.log(`[GameProcessWrapper:${this.processId}] Shutting down gracefully`);
-    
-    if (this.useWebSocket) {
-      // Close WebSocket server
-      if (this.wss) {
-        this.wss.close();
-      }
-      
-      // Close HTTP server
-      if (this.server) {
-        this.server.close();
-      }
-    }
-    
     process.exit(0);
   }
 }

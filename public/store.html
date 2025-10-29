@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
@@ -779,7 +780,8 @@
         <div class="filter-group">
           <label for="categoryFilter">Category:</label>
           <select id="categoryFilter" onchange="performSearch()">
-            <option value="all">All Categories</option>
+            <option value="all">All</option>
+            <option value="hot">🔥 Hot</option>
           </select>
         </div>
         
@@ -883,9 +885,11 @@
         if (data.success) {
           currentCategories = data.categories;
           const categoryFilter = document.getElementById('categoryFilter');
-          categoryFilter.innerHTML = currentCategories.map(cat => 
+          // Build options: All and Hot at top, then regular categories
+          const categoryOptions = currentCategories.map(cat => 
             `<option value="${cat}">${cat.charAt(0).toUpperCase() + cat.slice(1)}</option>`
           ).join('');
+          categoryFilter.innerHTML = '<option value="all">All</option><option value="hot">🔥 Hot</option>' + categoryOptions;
         }
       } catch (error) {
         console.error('Failed to load categories:', error);

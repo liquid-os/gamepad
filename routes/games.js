@@ -11,10 +11,19 @@ router.get('/store', requireAuth, async (req, res) => {
     const user = await User.findById(req.session.userId);
     
     // Use the searchGames static method
-    const games = await Game.searchGames(search, category, sortBy);
+    let games = await Game.searchGames(search, category, sortBy);
     
-    // Add ownership status to each game (no coin affordability check)
-    let gamesWithOwnership = games.map(game => {
+    // Filter by owned games if showOwned is true
+    if (showOwned === 'true') {
+      const ownedGameIds = user.ownedGames.map(owned => owned.gameId);
+      const freeGameIds = user.freeGames.map(free => free.gameId);
+      const accessibleGameIds = [...new Set([...ownedGameIds, ...freeGameIds])];
+      
+      games = games.filter(game => accessibleGameIds.includes(game.id));
+    }
+    
+    // Add ownership status to each game
+    const gamesWithOwnership = games.map(game => {
       const isOwned = user.ownedGames.some(owned => owned.gameId === game.id);
       const isFree = user.freeGames.some(free => free.gameId === game.id);
       const isAccessible = isOwned || isFree;
@@ -23,18 +32,15 @@ router.get('/store', requireAuth, async (req, res) => {
         ...game.toObject(),
         owned: isOwned,
         free: isFree,
-        accessible: isAccessible
+        accessible: isAccessible,
+        canAfford: user.coins >= game.price
       };
     });
 
-    // Filter out owned games if showOwned is not true
-    if (showOwned !== 'true') {
-      gamesWithOwnership = gamesWithOwnership.filter(game => !game.owned);
-    }
-
     res.json({
       success: true,
-      games: gamesWithOwnership
+      games: gamesWithOwnership,
+      userCoins: user.coins
     });
   } catch (error) {
     console.error('Get games error:', error);
@@ -45,20 +51,23 @@ router.get('/store', requireAuth, async (req, res) => {
   }
 });
 
-// Purchase a game (deprecated - use Stripe checkout instead)
+// Purchase a game
 router.post('/purchase/:gameId', requireAuth, async (req, res) => {
-  res.status(410).json({
-    success: false,
-    message: 'Coin purchases are no longer supported. Please use Stripe checkout.'
-  });
-});
-
-// Get user's library (owned + free games)
-router.get('/library', requireAuth, async (req, res) => {
   try {
-    const { search, category, sortBy } = req.query;
-    const user = await User.findById(req.session.userId);
-    
+    const { gameId } = req.params;
+    const userId = req.session.userId;
+
+    // Get game details
+    const game = await Game.findOne({ id: gameId, isActive: true });
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    // Get user
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -66,93 +75,58 @@ router.get('/library', requireAuth, async (req, res) => {
       });
     }
 
-    // Get all accessible game IDs (owned + free)
-    const accessibleGameIds = user.getAllAccessibleGames();
-    
-    if (accessibleGameIds.length === 0) {
-      return res.json({
-        success: true,
-        games: []
+    // Check if already owned
+    if (user.ownedGames.some(owned => owned.gameId === gameId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already own this game'
       });
     }
 
-    // Build query for accessible games
-    let query = { 
-      id: { $in: accessibleGameIds },
-      isActive: true 
-    };
-
-    // Add search filter
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { searchKeywords: { $in: [new RegExp(search, 'i')] } }
-      ];
+    // Check if user has enough coins
+    if (user.coins < game.price) {
+      return res.status(400).json({
+        success: false,
+        message: 'Not enough coins to purchase this game'
+      });
     }
 
-    // Add category filter
-    if (category && category !== 'all') {
-      query.category = category;
-    }
-
-    // Get games with filters
-    let games = await Game.find(query);
-
-    // Add ownership status to each game
-    const gamesWithOwnership = games.map(game => {
-      const isOwned = user.ownedGames.some(owned => owned.gameId === game.id);
-      const isFree = user.freeGames.some(free => free.gameId === game.id);
-      
-      return {
-        ...game.toObject(),
-        owned: isOwned,
-        free: isFree,
-        accessible: true // All games in library are accessible
-      };
+    // Purchase the game
+    user.coins -= game.price;
+    user.ownedGames.push({
+      gameId: gameId,
+      purchasedAt: new Date()
     });
 
-    // Sort games
-    if (sortBy) {
-      switch (sortBy) {
-        case 'name':
-          gamesWithOwnership.sort((a, b) => a.name.localeCompare(b.name));
-          break;
-        case 'newest':
-          gamesWithOwnership.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          break;
-        case 'rating':
-          gamesWithOwnership.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
-          break;
-        case 'category':
-          gamesWithOwnership.sort((a, b) => a.category.localeCompare(b.category));
-          break;
-        default:
-          gamesWithOwnership.sort((a, b) => a.name.localeCompare(b.name));
-      }
-    }
+    await user.save();
 
     res.json({
       success: true,
-      games: gamesWithOwnership
+      message: 'Game purchased successfully',
+      user: {
+        coins: user.coins,
+        ownedGames: user.ownedGames
+      }
     });
+
   } catch (error) {
-    console.error('Get library games error:', error);
+    console.error('Purchase game error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get library games'
+      message: 'Failed to purchase game'
     });
   }
 });
 
-// Get user's owned games (legacy endpoint)
+// Get user's owned games
 router.get('/owned', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId).populate('ownedGames.gameId');
     
     res.json({
       success: true,
-      ownedGames: user.ownedGames
+      ownedGames: user.ownedGames,
+      coins: user.coins
     });
   } catch (error) {
     console.error('Get owned games error:', error);
@@ -219,7 +193,7 @@ router.post('/lobby-available', requireAuth, async (req, res) => {
 router.post('/rate/:gameId', requireAuth, async (req, res) => {
   try {
     const { gameId } = req.params;
-    const { rating, reviewTitle, review } = req.body;
+    const { rating, review, reviewTitle } = req.body;
     const userId = req.session.userId;
 
     // Validate rating
@@ -230,7 +204,7 @@ router.post('/rate/:gameId', requireAuth, async (req, res) => {
       });
     }
 
-    // Validate review fields - if review text is provided, title must also be provided
+    // Validate review - if review text is provided, title must also be provided
     if (review && review.trim() && (!reviewTitle || !reviewTitle.trim())) {
       return res.status(400).json({
         success: false,
@@ -248,7 +222,7 @@ router.post('/rate/:gameId', requireAuth, async (req, res) => {
     }
 
     // Add or update rating
-    await game.addRating(userId, rating, reviewTitle || '', review || '');
+    await game.addRating(userId, rating, review || '', reviewTitle || '');
 
     res.json({
       success: true,
@@ -277,7 +251,7 @@ router.get('/game/:gameId', async (req, res) => {
     
     const game = await Game.findOne({ id: gameId, isActive: true })
       .populate('ratings.userId', 'username')
-      .select('-__v');
+      .select('-serverCode -clientCode -assets -__v');
     
     if (!game) {
       return res.status(404).json({
@@ -286,14 +260,22 @@ router.get('/game/:gameId', async (req, res) => {
       });
     }
 
-    // Sort reviews by date (newest first)
-    const sortedRatings = game.ratings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Check if user owns the game (for authenticated requests)
+    let userOwnsGame = false;
+    if (req.session && req.session.userId) {
+      const user = await User.findById(req.session.userId);
+      if (user) {
+        const ownedGameIds = user.ownedGames.map(owned => owned.gameId);
+        const freeGameIds = user.freeGames.map(free => free.gameId);
+        userOwnsGame = ownedGameIds.includes(game.id) || freeGameIds.includes(game.id);
+      }
+    }
 
     res.json({
       success: true,
       game: {
         ...game.toObject(),
-        ratings: sortedRatings
+        userOwnsGame
       }
     });
 
@@ -341,16 +323,113 @@ router.get('/ratings/:gameId', async (req, res) => {
 // Get categories
 router.get('/categories', async (req, res) => {
   try {
-    const categories = await Game.distinct('category', { isActive: true });
+    const categories = await Game.distinct('category', { isActive: true, approved: true });
     res.json({
       success: true,
-      categories: ['all', ...categories]
+      categories: categories.filter(cat => cat) // Remove null/undefined
     });
   } catch (error) {
     console.error('Get categories error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get categories'
+    });
+  }
+});
+
+// Get user's library games (owned + free games) with search, filter, and sort
+router.get('/library', requireAuth, async (req, res) => {
+  try {
+    const { search, category, sortBy } = req.query;
+    const user = await User.findById(req.session.userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Get all game IDs the user has access to (owned + free)
+    const ownedGameIds = user.ownedGames.map(owned => owned.gameId);
+    const freeGameIds = user.freeGames.map(free => free.gameId);
+    const accessibleGameIds = [...new Set([...ownedGameIds, ...freeGameIds])];
+    
+    if (accessibleGameIds.length === 0) {
+      return res.json({
+        success: true,
+        games: []
+      });
+    }
+    
+    // Build query for accessible games
+    let query = {
+      id: { $in: accessibleGameIds },
+      isActive: true,
+      approved: true
+    };
+    
+    // Add category filter if provided
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+    
+    // Build search query if provided
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { searchKeywords: { $in: [searchRegex] } }
+      ];
+    }
+    
+    // Build sort
+    let sort = {};
+    switch (sortBy) {
+      case 'name':
+        sort = { name: 1 };
+        break;
+      case 'newest':
+        sort = { createdAt: -1 };
+        break;
+      case 'rating':
+        sort = { averageRating: -1, totalRatings: -1 };
+        break;
+      case 'category':
+        sort = { category: 1, name: 1 };
+        break;
+      default:
+        sort = { name: 1 };
+    }
+    
+    // Find games
+    const games = await Game.find(query)
+      .select('-serverCode -clientCode -assets -__v')
+      .sort(sort);
+    
+    // Add ownership status to each game
+    const gamesWithOwnership = games.map(game => {
+      const isOwned = user.ownedGames.some(owned => owned.gameId === game.id);
+      const isFree = user.freeGames.some(free => free.gameId === game.id);
+      
+      return {
+        ...game.toObject(),
+        owned: isOwned,
+        free: isFree || (!isOwned && freeGameIds.includes(game.id))
+      };
+    });
+    
+    res.json({
+      success: true,
+      games: gamesWithOwnership
+    });
+    
+  } catch (error) {
+    console.error('Get library games error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get library games'
     });
   }
 });
