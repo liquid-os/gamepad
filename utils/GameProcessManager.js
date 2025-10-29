@@ -42,12 +42,13 @@ class GameProcessManager {
         const wrapperPath = path.join(__dirname, 'GameProcessWrapper.js');
         
         // SECURITY: Sanitize environment variables - only pass safe variables
+        const memoryMb = parseInt(process.env.GAME_PROCESS_MEMORY_MB || '256', 10);
         const sanitizedEnv = {
           NODE_ENV: process.env.NODE_ENV || 'development',
           GAME_PROCESS_ID: processId,
           GAME_ID: gameId,
           // Additional security: limit Node.js memory and disable warnings
-          NODE_OPTIONS: '--max-old-space-size=64', // Limit memory to 64MB
+          NODE_OPTIONS: `--max-old-space-size=${isNaN(memoryMb) ? 256 : memoryMb}`,
           NODE_NO_WARNINGS: '1',
           NODE_DISABLE_COLORS: '1',
           // Explicitly exclude sensitive variables:
@@ -204,6 +205,8 @@ class GameProcessManager {
             processInfo.state = 'ready';
             console.log(`[GameProcessManager] Game process ${processId} ready for lobby ${lobbyId}`);
             resolve(processInfo);
+            // Ensure subsequent READY messages don't trigger again
+            childProcess.off('message', onReady);
           }
         };
 
@@ -319,6 +322,9 @@ class GameProcessManager {
     processInfo.state = 'exited';
     
     console.log(`[GameProcessManager] Process ${processInfo.processId} for lobby ${processInfo.lobbyId} exited with code ${code}, signal ${signal}`);
+    if (signal === 'SIGKILL') {
+      console.warn(`[GameProcessManager] Process ${processInfo.processId} received SIGKILL. Possible causes: OOM due to memory cap (GAME_PROCESS_MEMORY_MB=${process.env.GAME_PROCESS_MEMORY_MB || '256'}), or external kill.`);
+    }
     
     // Attempt automatic restart if exit was unexpected
     if (code !== 0 && signal !== 'SIGTERM') {
