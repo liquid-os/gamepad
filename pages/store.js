@@ -52,7 +52,7 @@ export default function Store() {
 
       if (data.success) {
         setGames(data.games);
-        setCurrentUser(prev => ({ ...prev }));
+        setCurrentUser(prev => ({ ...prev, coins: data.userCoins }));
       }
       
       setLoading(false);
@@ -62,113 +62,25 @@ export default function Store() {
     }
   }
 
-  // Rating and review functions
-  function renderStars(rating) {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
-    let stars = '';
-    for (let i = 0; i < fullStars; i++) {
-      stars += '★';
-    }
-    if (hasHalfStar) {
-      stars += '☆';
-    }
-    for (let i = 0; i < emptyStars; i++) {
-      stars += '★';
-    }
-    return stars;
-  }
-
-  function renderRatingInput(gameId) {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-      stars += `<span className="rating-star" data-rating="${i}" onClick={() => setRating('${gameId}', ${i})}>★</span>`;
-    }
-    return stars;
-  }
-
-  function setRating(gameId, rating) {
-    const stars = document.querySelectorAll(`#ratingStars-${gameId} .rating-star`);
-    const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
-    
-    stars.forEach((star, index) => {
-      if (index < rating) {
-        star.classList.add('active');
-      } else {
-        star.classList.remove('active');
-      }
-    });
-    
-    submitBtn.disabled = false;
-    submitBtn.dataset.rating = rating;
-  }
-
-  function toggleReviewForm(gameId) {
-    const form = document.getElementById(`reviewForm-${gameId}`);
-    const toggleBtn = document.getElementById(`reviewToggle-${gameId}`);
-    
-    if (form.style.display === 'none') {
-      form.style.display = 'block';
-      toggleBtn.textContent = 'Hide Review Form';
-    } else {
-      form.style.display = 'none';
-      toggleBtn.textContent = 'Write a Review';
-    }
-  }
-
-  async function submitRating(gameId) {
-    const submitBtn = document.getElementById(`ratingSubmit-${gameId}`);
-    const rating = parseInt(submitBtn.dataset.rating);
-    const reviewTitle = document.getElementById(`reviewTitle-${gameId}`).value.trim();
-    const reviewText = document.getElementById(`reviewText-${gameId}`).value.trim();
-    
-    if (!rating || rating < 1 || rating > 5) {
-      alert('Please select a rating');
-      return;
-    }
-
-    // Validate review fields - if review text is provided, title must also be provided
-    if (reviewText && !reviewTitle) {
-      alert('Please provide a title for your review');
-      return;
-    }
-    
+  async function purchaseWithCoins(gameId) {
     try {
-      const response = await fetch(`/api/games/rate/${gameId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          rating,
-          reviewTitle,
-          review: reviewText
-        })
+      const response = await fetch(`/api/games/purchase/${gameId}`, {
+        method: 'POST'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        alert('Rating submitted successfully!');
-        // Clear the form
-        document.getElementById(`reviewTitle-${gameId}`).value = '';
-        document.getElementById(`reviewText-${gameId}`).value = '';
-        document.getElementById(`reviewForm-${gameId}`).style.display = 'none';
-        document.getElementById(`reviewToggle-${gameId}`).textContent = 'Write a Review';
-        // Refresh the game store to show updated ratings
-        await loadGameStore();
+        alert('Game purchased successfully!');
+        loadGameStore();
       } else {
         alert(data.message);
       }
     } catch (error) {
-      console.error('Rating error:', error);
-      alert('Failed to submit rating');
+      console.error('Purchase error:', error);
+      alert('Purchase failed');
     }
   }
-
-  // Coin purchase function removed - using Stripe only
 
   async function purchaseWithStripe(gameId) {
     try {
@@ -211,7 +123,7 @@ export default function Store() {
 
         <div className="user-info">
           <button onClick={() => router.push('/')} className="back-btn">← Back to Home</button>
-          <div className="user-coins">💳 USD Pricing Only</div>
+          <div className="user-coins">💰 {currentUser.coins} coins</div>
         </div>
 
         <div className="search-controls">
@@ -242,13 +154,6 @@ export default function Store() {
           {games.map((game) => (
             <div key={game.id} className="game-card">
               <div className="game-card-content">
-                <div className="game-image-section">
-                  <img 
-                    src={game.logo || '/game-logos/default-logo.png'} 
-                    alt={game.name} 
-                    className="game-logo"
-                  />
-                </div>
                 <div className="game-info-section">
                   <div className="game-header">
                     <h3 className="game-title">{game.name}</h3>
@@ -264,81 +169,31 @@ export default function Store() {
                   </div>
                   
                   <div className="price-info">
-                    <span className="usd-price">💳 ${(game.price / 100).toFixed(2)}</span>
+                    <span className="coin-price">💰 {game.price} coins</span>
+                    <span className="money-price">💳 ${(game.price * 0.01).toFixed(2)}</span>
                   </div>
-                  
-                  {/* Rating Display */}
-                  <div className="rating-display">
-                    <div className="stars">{renderStars(game.averageRating || 0)}</div>
-                    <span className="rating-text">
-                      {game.totalRatings > 0 ? 
-                        `${game.averageRating.toFixed(1)} (${game.totalRatings} review${game.totalRatings !== 1 ? 's' : ''})` : 
-                        'No ratings yet'
-                      }
-                    </span>
-                    {game.totalRatings > 0 && (
-                      <button 
-                        onClick={() => router.push(`/game?id=${game.id}`)} 
-                        className="browse-reviews-btn"
-                      >
-                        Browse Reviews ({game.ratings ? game.ratings.filter(r => r.review && r.review.trim()).length : 0})
-                      </button>
-                    )}
-                  </div>
-                  
-                  {/* Rating Section (only show if user owns the game) */}
-                  {game.accessible && (
-                    <div className="rating-section">
-                      <div className="rating-input">
-                        <div className="rating-stars" id={`ratingStars-${game.id}`}>
-                          {renderRatingInput(game.id)}
-                        </div>
-                        <button 
-                          onClick={() => toggleReviewForm(game.id)} 
-                          className="review-toggle-btn"
-                          id={`reviewToggle-${game.id}`}
-                        >
-                          Write a Review
-                        </button>
-                        <button 
-                          onClick={() => submitRating(game.id)} 
-                          className="rating-submit" 
-                          id={`ratingSubmit-${game.id}`}
-                          disabled
-                        >
-                          Rate Game
-                        </button>
-                      </div>
-                      <div className="review-form" id={`reviewForm-${game.id}`} style={{display: 'none'}}>
-                        <div className="review-field">
-                          <label htmlFor={`reviewTitle-${game.id}`}>Review Title:</label>
-                          <input 
-                            type="text" 
-                            id={`reviewTitle-${game.id}`} 
-                            placeholder="Enter a title for your review..." 
-                            maxLength="100"
-                          />
-                        </div>
-                        <div className="review-field">
-                          <label htmlFor={`reviewText-${game.id}`}>Review:</label>
-                          <textarea 
-                            id={`reviewText-${game.id}`} 
-                            placeholder="Share your thoughts about this game..." 
-                            rows="4" 
-                            maxLength="1000"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
                   
                   <div className="game-actions">
-                    {!game.accessible ? (
-                      <button onClick={() => purchaseWithStripe(game.id)} className="purchase-btn">
-                        Buy for ${(game.price / 100).toFixed(2)}
-                      </button>
-                    ) : (
+                    {!game.accessible && game.canAfford ? (
+                      <>
+                        <button onClick={() => purchaseWithCoins(game.id)} className="purchase-btn">
+                          Buy with Coins
+                        </button>
+                        <button onClick={() => purchaseWithStripe(game.id)} className="stripe-btn">
+                          Buy with Card
+                        </button>
+                      </>
+                    ) : game.accessible ? (
                       <button className="owned-btn">{game.owned ? '✅ Owned' : '🆓 Free'}</button>
+                    ) : (
+                      <>
+                        <button className="insufficient-btn" disabled>
+                          Need {game.price} coins
+                        </button>
+                        <button onClick={() => purchaseWithStripe(game.id)} className="stripe-btn">
+                          Buy with Card
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -462,19 +317,6 @@ export default function Store() {
         
         .game-card-content {
           padding: 20px;
-          display: flex;
-          gap: 15px;
-        }
-
-        .game-image-section {
-          flex-shrink: 0;
-        }
-
-        .game-logo {
-          width: 150px;
-          height: 150px;
-          object-fit: cover;
-          border-radius: 10px;
         }
         
         .game-header {
@@ -525,13 +367,15 @@ export default function Store() {
           border-radius: 10px;
         }
         
-        .usd-price {
+        .coin-price {
           color: #28a745;
           font-weight: bold;
-          font-size: 1.2rem;
         }
         
-        /* Money price display removed - using USD pricing only */
+        .money-price {
+          color: #007bff;
+          font-weight: bold;
+        }
         
         .game-actions {
           display: flex;
@@ -565,161 +409,6 @@ export default function Store() {
           padding: 50px;
           color: white;
           font-size: 1.2em;
-        }
-
-        /* Rating Stars */
-        .rating-display {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          margin: 5px 0;
-        }
-
-        .stars {
-          display: flex;
-          gap: 2px;
-        }
-
-        .star {
-          color: #ffc107;
-          font-size: 1.1em;
-        }
-
-        .star.empty {
-          color: #e9ecef;
-        }
-
-        .rating-text {
-          font-size: 0.9em;
-          color: #666;
-          margin-left: 5px;
-        }
-
-        .rating-section {
-          margin: 10px 0;
-          padding: 10px;
-          background: #f8f9fa;
-          border-radius: 8px;
-        }
-
-        .rating-input {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin: 10px 0;
-        }
-
-        .rating-stars {
-          display: flex;
-          gap: 5px;
-        }
-
-        .rating-star {
-          font-size: 1.5em;
-          color: #e9ecef;
-          cursor: pointer;
-          transition: color 0.2s;
-        }
-
-        .rating-star:hover,
-        .rating-star.active {
-          color: #ffc107;
-        }
-
-        .rating-submit {
-          background: #28a745;
-          color: white;
-          border: none;
-          padding: 8px 15px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.9em;
-        }
-
-        .rating-submit:hover {
-          background: #218838;
-        }
-
-        .rating-submit:disabled {
-          background: #6c757d;
-          cursor: not-allowed;
-        }
-
-        .review-toggle-btn {
-          background: #17a2b8;
-          color: white;
-          border: none;
-          padding: 8px 15px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.9em;
-          margin-left: 10px;
-        }
-
-        .review-toggle-btn:hover {
-          background: #138496;
-        }
-
-        .review-form {
-          margin-top: 15px;
-          padding: 15px;
-          background: #f8f9fa;
-          border-radius: 8px;
-          border: 1px solid #e9ecef;
-        }
-
-        .review-field {
-          margin-bottom: 15px;
-        }
-
-        .review-field:last-child {
-          margin-bottom: 0;
-        }
-
-        .review-field label {
-          display: block;
-          font-weight: 600;
-          color: #333;
-          margin-bottom: 5px;
-          font-size: 0.9em;
-        }
-
-        .review-field input,
-        .review-field textarea {
-          width: 100%;
-          padding: 8px 12px;
-          border: 2px solid #e9ecef;
-          border-radius: 5px;
-          font-size: 0.9em;
-          font-family: inherit;
-          transition: border-color 0.3s;
-        }
-
-        .review-field input:focus,
-        .review-field textarea:focus {
-          outline: none;
-          border-color: #007bff;
-        }
-
-        .review-field textarea {
-          resize: vertical;
-          min-height: 80px;
-        }
-
-        .browse-reviews-btn {
-          background: #6f42c1;
-          color: white;
-          border: none;
-          padding: 6px 12px;
-          border-radius: 5px;
-          cursor: pointer;
-          font-size: 0.8em;
-          margin-left: 10px;
-          transition: background 0.3s;
-        }
-
-        .browse-reviews-btn:hover {
-          background: #5a32a3;
         }
       `}</style>
     </Layout>

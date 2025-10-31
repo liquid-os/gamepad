@@ -547,7 +547,7 @@ router.post('/upload-game', requireAuth, requireCreator, (req, res, next) => {
       category: category || 'strategy',
       creatorId: req.user._id,
       status: req.user.role === 'admin' ? 'approved' : 'pending',
-      approved: req.user.role === 'admin', // Only admins can auto-approve games
+      approved: req.user.role === 'admin' ? true : false, // Only admins can auto-approve games
       images: gameImages,
       // Don't store large serverCode/clientCode or assets - they're already on disk
       // Only keep minimal metadata for validation reference

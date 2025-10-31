@@ -3311,15 +3311,17 @@ function getRandomConsumableItem(encounterNumber = 0) {
   return consumables[0].id;
 }
 
-function generateLoot(encounterDifficulty = 'medium', lobby, encounterNumber, lootAmountModifier = 1.0, lootQualityModifier = 1.0) {
-  console.log(`[LOOT] generateLoot called with encounterNumber: ${encounterNumber}, lootAmountModifier: ${lootAmountModifier}, lootQualityModifier: ${lootQualityModifier}`);
+function generateLoot(encounterDifficulty = 'medium', lobby, encounterNumber, lootModifier = 'Normal') {
+  console.log(`[LOOT] generateLoot called with encounterNumber: ${encounterNumber}, lootModifier: ${lootModifier}`);
   const lootTable = LOOT_TABLES.items;
   // Drop 1 item per player in the game
   const alivePlayers = Object.values(lobby.state.players).filter(p => p.health > 0);
   let numItems = Math.max(1, alivePlayers.length); // At least 1 item, or 1 per alive player
   
-  // Apply loot amount modifier
-  numItems = Math.round(numItems * lootAmountModifier);
+  // Apply loot modifier
+  if (lootModifier === 'Plentiful') {
+    numItems = numItems * 2; // Double the items
+  }
   
   const loot = [];
   
@@ -3376,7 +3378,7 @@ function generateLoot(encounterDifficulty = 'medium', lobby, encounterNumber, lo
   }
   
   for (let i = 0; i < numItems; i++) {
-    const randomItem = createItem(encounterNumber, false, lootQualityModifier);
+    const randomItem = createItem(encounterNumber, false, lootModifier);
     /*const isRandomItem = Math.random() < 0.3; // 30% chance for random item
     
     if (isRandomItem) {
@@ -4892,7 +4894,7 @@ const STATUS_EFFECT_NAMES = ['poison', 'stun', 'slow', 'curse', 'vulnerable', 's
 
 // ============= RANDOM ITEM GENERATION =============
 
-function createItem(encounterNumber, rewardRares = false, lootQualityModifier = 1.0) {
+function createItem(encounterNumber, rewardRares = false, lootModifier = 'Normal') {
   const RARE_CHANCE = 0.05;
   const RANKUP_CHANCE = 0.1;
   const CURSED_CHANCE = 0.05;
@@ -4991,9 +4993,11 @@ function createItem(encounterNumber, rewardRares = false, lootQualityModifier = 
   let name = rank.prefix + randomTemplate.name;
   let multi = rank.multiplier;
   
-  // Apply loot quality modifier to multiplier
-  multi *= lootQualityModifier;
-  console.log(`[ITEM] Loot quality modifier ${lootQualityModifier} applied, multi changed from ${rank.multiplier} to ${multi}`);
+  // Apply loot modifier to multiplier
+  if (lootModifier === 'Excellent') {
+    multi *= 2; // Double the effect multiplier
+    console.log(`[ITEM] Excellent loot modifier applied, multi doubled to ${multi}`);
+  }
   
   const cursed = Math.random() < CURSED_CHANCE;
   if(cursed){
@@ -6543,40 +6547,25 @@ function checkAndStartPickAPath(lobby, api) {
 function generateEncounterOption(encounterNumber, numPlayers) {
   const encounterType = Math.random() < 0.2 ? ENCOUNTER_TYPE_PUZZLE : ENCOUNTER_TYPE_COMBAT;
   
-  // Generate random budgetMod between 1.0 and 2.0
-  let budgetMod = 1.0; // 1.0 to 2.0
-  
-  // Generate random difficulty between 1.0 and 2.0
-  let difficulty = 1.0; // 1.0 to 2.0
-
+  // Generate random difficulty multiplier (1.0 to 2.5)
+  let difficulty = 1.0;
+  if(Math.random() < 0.4) {
+    difficulty += Math.random() * 0.5;
+  }
   if(Math.random() < 0.3) {
-    difficulty += Math.random();
-    budgetMod += Math.random();
+    difficulty += Math.random() * 1;
   }
   
-  // Calculate how much above base values (1.0 each)
-  const budgetBonus = budgetMod - 1.0;
-  const difficultyBonus = difficulty - 1.0;
-  const totalBonus = budgetBonus + difficultyBonus;
-  
-  // Randomly distribute the bonus between amount and quality modifiers
-  // Each modifier starts at 1.0 (no bonus)
-  let lootAmountModifier = 1.0;
-  let lootQualityModifier = 1.0;
-  
-  if (totalBonus > 0) {
-    // Randomly split the total bonus between amount and quality
-    const amountShare = Math.random(); // 0.0 to 1.0
-    const qualityShare = 1.0 - amountShare;
-    
-    // Apply the bonus distribution
-    lootAmountModifier += totalBonus * amountShare;
-    lootQualityModifier += totalBonus * qualityShare;
+  // Generate random loot modifier
+  const lootRoll = Math.random();
+  let lootModifier;
+  if (lootRoll < 0.5) {
+    lootModifier = 'Normal'; // 50% chance
+  } else if (lootRoll < 0.85) {
+    lootModifier = 'Plentiful'; // 35% chance
+  } else {
+    lootModifier = 'Excellent'; // 15% chance
   }
-  
-  // Ensure minimum values
-  lootAmountModifier = Math.max(1.0, lootAmountModifier);
-  lootQualityModifier = Math.max(1.0, lootQualityModifier);
   
   if (encounterType === ENCOUNTER_TYPE_PUZZLE) {
     const puzzleTypes = Object.keys(PUZZLE_TYPES);
@@ -6598,13 +6587,11 @@ function generateEncounterOption(encounterNumber, numPlayers) {
       puzzleType: puzzleType,
       enemies: enemies,
       difficulty: difficulty,
-      lootAmountModifier: lootAmountModifier,
-      lootQualityModifier: lootQualityModifier,
-      budgetModifier: budgetMod
+      lootModifier: lootModifier
     };
   } else {
     const budget = calculateEncounterBudget(numPlayers, encounterNumber);
-    const adjustedBudget = Math.floor(budget * budgetMod); // Apply difficulty to budget
+    const adjustedBudget = Math.floor(budget * difficulty); // Apply difficulty to budget
     const enemies = generateEnemiesByBudget(adjustedBudget, encounterNumber, numPlayers);
     
     // Apply difficulty multiplier to enemy stats
@@ -6625,9 +6612,7 @@ function generateEncounterOption(encounterNumber, numPlayers) {
       type: ENCOUNTER_TYPE_COMBAT,
       enemies: enemies,
       difficulty: difficulty,
-      lootAmountModifier: lootAmountModifier,
-      lootQualityModifier: lootQualityModifier,
-      budgetModifier: budgetMod
+      lootModifier: lootModifier
     };
   }
 }
@@ -6683,15 +6668,13 @@ function generateEncounterDescription(encounter) {
     }
   }
   
-  // Add loot modifier description
+  // Add loot modifier
   let lootText = '';
-  if (encounter.lootAmountModifier > 1.2) {
+  if (encounter.lootModifier === 'Plentiful') {
     lootText = ' There appears to be a large amount of treasure!';
-  } else if (encounter.lootQualityModifier > 1.2) {
+  } else if (encounter.lootModifier === 'Excellent') {
     lootText = ' The treasure appears high in quality!';
-  } else if (encounter.lootAmountModifier > 1.1 || encounter.lootQualityModifier > 1.1) {
-    lootText = ' The treasures appear enhanced.';
-  } else {
+  }else{
     lootText = ' The treasures appear normal.';
   }
 
@@ -6831,11 +6814,10 @@ function startChosenEncounter(lobby, api, encounter) {
   
   const encounterNum = lobby.state.encounterNumber;
   
-  console.log(`[ENCOUNTER] Starting chosen ${encounter.type} encounter #${encounterNum} with difficulty ${encounter.difficulty.toFixed(2)}, loot amount modifier ${encounter.lootAmountModifier.toFixed(2)}, and loot quality modifier ${encounter.lootQualityModifier.toFixed(2)}`);
+  console.log(`[ENCOUNTER] Starting chosen ${encounter.type} encounter #${encounterNum} with difficulty ${encounter.difficulty.toFixed(2)} and loot modifier ${encounter.lootModifier}`);
   
-  // Store loot modifiers for this encounter
-  lobby.state.currentLootAmountModifier = encounter.lootAmountModifier;
-  lobby.state.currentLootQualityModifier = encounter.lootQualityModifier;
+  // Store loot modifier for this encounter
+  lobby.state.currentLootModifier = encounter.lootModifier;
   
   // Reset ability uses for all players at start of combat
   Object.values(lobby.state.players).forEach(player => {
@@ -8330,9 +8312,6 @@ async function resolveCombatRound(lobby, api) {
     
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
-  
-  // Decrement status effect durations at start of round (after periodic effects)
-  decrementStatusEffectDurations(lobby);
 
   // Notify that combat resolution is starting
   api.sendToHost('hostGameUpdate', {
@@ -8410,24 +8389,14 @@ async function resolveCombatRound(lobby, api) {
               result = executePlayerAction(lobby, api, player, queuedAction.action, queuedAction.target, subAnim);
               combatLog.push(result);
               
-              // Only send animation if this is not a charge-up action being used for the first time
-              if (!result.charging) {
-                // Add hit/crit/damage/heal info to animation data for visual feedback
-                subAnim.hit = result.hit !== false;
-                subAnim.crit = result.crit || false;
-                subAnim.damage = result.damage || 0;
-                subAnim.heal = result.heal || 0;
-                
-                // Send animation for this repeat
-                api.sendToHost('animateAction', subAnim);
-              } else {
-                // For charge-up actions, only send a charging animation
-                api.sendToHost('animateCharging', {
-                  actorId: player.id,
-                  action: queuedAction.action.name,
-                  actionId: queuedAction.action.id
-                });
-              }
+              // Add hit/crit/damage/heal info to animation data for visual feedback
+              subAnim.hit = result.hit !== false;
+              subAnim.crit = result.crit || false;
+              subAnim.damage = result.damage || 0;
+              subAnim.heal = result.heal || 0;
+              
+              // Send animation for this repeat
+              api.sendToHost('animateAction', subAnim);
               
               // no await here: we cannot use await in this non-async map; rely on outer pacing
             }
@@ -8634,6 +8603,9 @@ async function resolveCombatRound(lobby, api) {
       endCombat(lobby, api, 'defeat');
     }, 3000);
   } else {
+    // Decrement status effect durations
+    decrementStatusEffectDurations(lobby);
+    
     // Notify players of their status effects
     Object.values(lobby.state.players).forEach(player => {
       if (player.health > 0) {
@@ -9759,9 +9731,8 @@ function endCombat(lobby, api, result) {
     setTimeout(() => {
       // Generate loot for victory
       const encounterNumber = lobby.state.encounterNumber || 0;
-      const lootAmountModifier = lobby.state.currentLootAmountModifier || 1.0;
-      const lootQualityModifier = lobby.state.currentLootQualityModifier || 1.0;
-      const loot = generateLoot('medium', lobby, encounterNumber, lootAmountModifier, lootQualityModifier);
+      const lootModifier = lobby.state.currentLootModifier || 'Normal';
+      const loot = generateLoot('medium', lobby, encounterNumber, lootModifier);
       
       // Show loot screen on host
       api.sendToHost('showLootScreen', {

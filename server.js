@@ -345,6 +345,7 @@ io.of('/lobby').on('connection', socket => {
       hostUsername: username || 'HOST',
       gameId: null,
       players: [],
+      spectators: [], // Array of spectator socket IDs
       state: {},
       playerIds: [] // Store user IDs for game ownership checking
     };
@@ -439,6 +440,19 @@ io.of('/lobby').on('connection', socket => {
       }
     }
 
+    // Prevent duplicate joins from same socket
+    if (lobby.players.some(p => p.id === socket.id)) {
+      const availableGamesDup = await getAvailableGamesForLobby(lobby.playerIds);
+      return callback?.({
+        code,
+        games: availableGamesDup,
+        username,
+        gameId: lobby.gameId,
+        isHost: false,
+        reconnected: false
+      });
+    }
+
     const player = { id: socket.id, username, userId: userId };
     lobby.players.push(player);
     if (userId) {
@@ -474,7 +488,7 @@ io.of('/lobby').on('connection', socket => {
       reconnected: false
     });
 
-    // Update player list for everyone (including host)
+    // Update player list for everyone (including host and spectators)
     io.of('/lobby').to(code).emit('playerListUpdate', lobby.players.map(p => p.username));
     
     // Update games for host when players join
@@ -514,6 +528,12 @@ io.of('/lobby').on('connection', socket => {
 
     // Game is already approved (only approved games are loaded by gameLoader)
     console.log(`[DEBUG] Game ${gameId} is approved and available`);
+
+    // If a game is already selected, ignore subsequent selections
+    if (lobby.gameId) {
+      console.log(`[DEBUG] Game already selected for lobby ${code}: ${lobby.gameId}, ignoring new selection ${gameId}`);
+      return callback?.({ error: 'Game already selected' });
+    }
 
     console.log(`[DEBUG] Starting game: ${game.meta.name}`);
     lobby.gameId = gameId;
@@ -564,6 +584,17 @@ io.of('/lobby').on('connection', socket => {
         });
       }
 
+      // Notify all spectators of game start
+      if (lobby.spectators && lobby.spectators.length > 0) {
+        console.log(`[DEBUG] Notifying ${lobby.spectators.length} spectator(s) of game start`);
+        lobby.spectators.forEach(spectatorId => {
+          io.of('/lobby').to(spectatorId).emit('hostGameStarted', {
+            game: game.meta,
+            gameId: gameId
+          });
+        });
+      }
+
       console.log(`[DEBUG] Game selection completed successfully`);
       callback?.({ success: true });
     } catch (error) {
@@ -598,6 +629,55 @@ io.of('/lobby').on('connection', socket => {
     lobbies.delete(code);
   });
 
+  // Join a lobby as a spectator
+  socket.on('spectateLobby', async ({ code }, callback) => {
+    console.log(`[DEBUG] spectateLobby called: socketId=${socket.id}, code=${code}`);
+    
+    const lobby = lobbies.get(code);
+    if (!lobby) return callback?.({ error: 'Lobby not found' });
+
+    // Prevent host from spectating their own lobby
+    if (socket.id === lobby.host) {
+      return callback?.({ error: 'Host cannot spectate their own lobby' });
+    }
+
+    // Prevent duplicate spectator joins
+    if (lobby.spectators && lobby.spectators.includes(socket.id)) {
+      return callback?.({ code, isSpectator: true });
+    }
+
+    // Add spectator to lobby
+    if (!lobby.spectators) {
+      lobby.spectators = [];
+    }
+    lobby.spectators.push(socket.id);
+    socket.join(code);
+
+    console.log(`[DEBUG] Spectator ${socket.id} joined lobby ${code}`);
+
+    // Send current lobby state
+    callback?.({
+      code,
+      isSpectator: true,
+      playerCount: lobby.players.length,
+      gameId: lobby.gameId || null
+    });
+
+    // Send initial player list
+    socket.emit('playerListUpdate', lobby.players.map(p => p.username));
+
+    // If game is already started, send game started event
+    if (lobby.gameId && lobby.gameStarted) {
+      const game = gameLoader.getGame(lobby.gameId);
+      if (game) {
+        socket.emit('hostGameStarted', {
+          game: game.meta,
+          gameId: lobby.gameId
+        });
+      }
+    }
+  });
+
   // Leave lobby
   socket.on('leaveLobby', ({ code }) => {
     const lobby = lobbies.get(code);
@@ -615,6 +695,15 @@ io.of('/lobby').on('connection', socket => {
         if (userIdIndex !== -1) {
           lobby.playerIds.splice(userIdIndex, 1);
         }
+      }
+    }
+
+    // Remove spectator from lobby
+    if (lobby.spectators) {
+      const spectatorIndex = lobby.spectators.indexOf(socket.id);
+      if (spectatorIndex !== -1) {
+        lobby.spectators.splice(spectatorIndex, 1);
+        console.log(`[DEBUG] Spectator ${socket.id} left lobby ${code}`);
       }
     }
 

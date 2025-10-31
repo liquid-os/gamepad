@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Party Game Platform</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    #lobbyView, #gameView { display: none; }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #e1e5e9;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    button {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-bottom: 10px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
+    .game-option { 
+      cursor: pointer; 
+      padding: 20px; 
+      border: 2px solid #e1e5e9; 
+      margin: 10px 0; 
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .game-option:hover { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      transform: translateY(-2px);
+    }
+    .game-info {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+    .game-players {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    #playerList {
+      list-style: none;
+      margin: 20px 0;
+    }
+    
+    #playerList li {
+      background: #f8f9fa;
+      padding: 10px 15px;
+      margin: 5px 0;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .lobby-code {
+      background: #667eea;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+
+    .game-end-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 600px;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    .game-end-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 150px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f8f9fa;
+      color: #495057;
+      border: 2px solid #e9ecef;
+    }
+
+    .btn-secondary:hover {
+      background: #e9ecef;
+      transform: translateY(-2px);
+    }
+
+    #finalResults {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      text-align: left;
+    }
+
+    .final-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .score-card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .score-card.winner {
+      border-left-color: #28a745;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    }
+
+    .score-card h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .score-card .score {
+      font-size: 2em;
+      font-weight: bold;
+      color: #28a745;
+    }
+
+    /* Enhanced Store Styles */
+    .game-card {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin: 20px 0;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .game-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .game-card-content {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .game-image-section {
+      position: relative;
+    }
+
+    .game-image-container {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.3s;
+    }
+
+    .game-image-container:hover {
+      transform: scale(1.05);
+    }
+
+    .game-main-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      color: white;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .gallery-indicator {
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+    .game-info-section {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .game-title {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #333;
+      margin: 0;
+    }
+
+    .game-status {
+      font-size: 0.9em;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 15px;
+      background: #e9ecef;
+    }
+
+    .game-description {
+      color: #666;
+      line-height: 1.5;
+      margin: 10px 0;
+    }
+
+    .game-details {
+      display: flex;
+      gap: 15px;
+      margin: 10px 0;
+    }
+
+    .player-count, .game-category {
+      font-size: 0.9em;
+      color: #666;
+      background: #f8f9fa;
+      padding: 5px 10px;
+      border-radius: 10px;
+    }
+
+    .game-actions {
+      margin-top: 15px;
+    }
+
+    .purchase-btn {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .purchase-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .owned-btn {
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+
+    .insufficient-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: not-allowed;
+    }
+
+    /* Image Gallery Modal */
+    .gallery-modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.9);
+    }
+
+    .gallery-content {
+      position: relative;
+      margin: auto;
+      padding: 20px;
+      width: 90%;
+      max-width: 800px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .gallery-close {
+      position: absolute;
+      top: 15px;
+      right: 35px;
+      color: #f1f1f1;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .gallery-close:hover {
+      color: #bbb;
+    }
+
+    .gallery-main-image {
+      width: 100%;
+      max-height: 500px;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+
+    .gallery-thumbnails {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .gallery-thumbnail {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 5px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+
+    .gallery-thumbnail:hover,
+    .gallery-thumbnail.active {
+      opacity: 1;
+    }
+
+    .gallery-caption {
+      text-align: center;
+      color: white;
+      margin-top: 10px;
+      font-size: 1.1em;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 30px;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    .gallery-nav:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .gallery-nav.prev {
+      left: 20px;
+    }
+
+    .gallery-nav.next {
+      right: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Party Game Hub</h1>
+
+    <div id="authView">
+      <div id="loginForm">
+        <h2>🔐 Login</h2>
+        <div class="input-group">
+          <input id="loginEmail" type="email" placeholder="Email" />
+        </div>
+        <div class="input-group">
+          <input id="loginPassword" type="password" placeholder="Password" />
+        </div>
+        <button id="loginBtn">Login</button>
+        <p>Don't have an account? <a href="#" id="showRegister">Register here</a></p>
+        
+        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
+          <h3>🎮 Quick Start</h3>
+          <p>Want to start playing immediately?</p>
+          <button id="quickHostBtn" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+        </div>
+      </div>
+      
+      <div id="registerForm" style="display: none;">
+        <h2>📝 Register</h2>
+        <div class="input-group">
+          <input id="registerUsername" type="text" placeholder="Username" />
+        </div>
+        <div class="input-group">
+          <input id="registerEmail" type="email" placeholder="Email" />
+        </div>
+        <div class="input-group">
+          <input id="registerPassword" type="password" placeholder="Password" />
+        </div>
+        <button id="registerBtn">Register</button>
+        <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+        
+        <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
+          <h3>🎮 Quick Start</h3>
+          <p>Want to start playing immediately?</p>
+          <button id="quickHostBtn2" style="background: #28a745; width: 100%; margin-top: 10px;">📺 Host Game (No Account Needed)</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="homeView" style="display: none;">
+      <div id="userInfo">
+        <h3>Welcome, <span id="userDisplayName"></span>!</h3>
+        <p>💰 Coins: <span id="userCoins">0</span></p>
+        <button id="logoutBtn" style="background: #dc3545; margin: 10px 0;">Logout</button>
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin: 20px 0;">
+        <button id="createLobby" style="flex: 1;">📺 Host Game (TV Screen)</button>
+        <button id="joinAsPlayer" style="flex: 1; background: #28a745;">📱 Join as Player</button>
+        <button id="storeBtn" style="flex: 1; background: #6f42c1; color: white;">🛒 Game Store</button>
+        <button id="creatorBtn" style="flex: 1; background: #fd7e14; color: white;">🎮 Creator Dashboard</button>
+      </div>
+      
+      <div id="joinSection" style="display: none;">
+        <div class="input-group">
+          <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" maxlength="4" />
+        </div>
+        <button id="joinLobby">🚀 Join Lobby</button>
+      </div>
+  </div>
+
+  <div id="lobbyView">
+      <div class="lobby-code">Lobby Code: <span id="codeDisplay"></span></div>
+      
+      <h3>👥 Players in Lobby:</h3>
+    <ul id="playerList"></ul>
+      
+      <h3>🎯 Select a Game:</h3>
+    <div id="gameList"></div>
+      
+      <button id="exitLobby" style="background: #dc3545; margin-top: 20px;">🚪 Leave Lobby</button>
+  </div>
+
+  <div id="gameView">
+    <h2>Game Started: <span id="gameName"></span></h2>
+    <p>You are a <span id="roleDisplay"></span> in this game.</p>
+    </div>
+  </div>
+
+  <div id="gameEndView" style="display: none;">
+    <div class="game-end-container">
+      <h2>🎉 Game Complete!</h2>
+      <div id="finalResults"></div>
+      <div class="game-end-actions">
+        <button id="playAgainBtn" class="btn btn-primary">🎮 Play Another Game</button>
+        <button id="returnToLobbyBtn" class="btn btn-secondary">🏠 Return to Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Gallery Modal -->
+  <div id="imageGalleryModal" class="gallery-modal">
+    <div class="gallery-content">
+      <span class="gallery-close" onclick="closeImageGallery()">&times;</span>
+      <img id="galleryMainImage" class="gallery-main-image" src="" alt="">
+      <div id="galleryCaption" class="gallery-caption"></div>
+      <div id="galleryThumbnails" class="gallery-thumbnails"></div>
+      <button class="gallery-nav prev" onclick="previousImage()">‹</button>
+      <button class="gallery-nav next" onclick="nextImage()">›</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket = null; // Will be created when joining a lobby
+    let currentLobbyCode = null;
+    let myName = null;
+
+    function showGame(game, gameId, role) {
+      console.log('showGame called:', game, gameId, role);
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'block';
+      gameEndView.style.display = 'none';
+      gameName.textContent = game.name;
+      roleDisplay.textContent = role;
+      
+      // Set global variables for the game client to access
+      window.currentLobbyCode = currentLobbyCode;
+      window.myName = myName;
+      
+      console.log('showGame debug - currentLobbyCode:', currentLobbyCode, 'myName:', myName, 'gameId:', gameId);
+      console.log('Set window.currentLobbyCode to:', window.currentLobbyCode);
+      console.log('Set window.myName to:', window.myName);
+      const gameUrl = `/games/${gameId}/client/index.html`;
+      console.log('Loading game in iframe:', gameUrl);
+      
+      // Clear any existing game content
+      const gameContainer = document.getElementById('gameView');
+      gameContainer.innerHTML = '';
+      
+      // Create iframe for the game
+      const iframe = document.createElement('iframe');
+      iframe.id = 'gameFrame';
+      
+      // For RPG game, make it fullscreen without container constraints
+      if (gameId === 'rpg') {
+        iframe.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; border: none; z-index: 10000;';
+      } else {
+        // Other games use normal iframe sizing
+        iframe.style.cssText = 'width: 100%; height: 100vh; border: none;';
+      }
+      
+      gameContainer.appendChild(iframe);
+      
+      // Set the src after adding to DOM to ensure parent window variables are available
+      setTimeout(() => {
+        iframe.src = gameUrl;
+      }, 100);
+    }
+
+    function showGameEndScreen(data) {
+      console.log('Showing game end screen:', data);
+      
+      // Hide other views and show end screen
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      gameEndView.style.display = 'block';
+      
+      // Display final results
+      if (data.scores && Object.keys(data.scores).length > 0) {
+        const sortedScores = Object.entries(data.scores)
+          .map(([player, score]) => ({ player, score }))
+          .sort((a, b) => b.score - a.score);
+        
+        const scoresHtml = `
+          <h3>🏆 Final Scores</h3>
+          <div class="final-scores">
+            ${sortedScores.map((entry, index) => `
+              <div class="score-card ${index === 0 ? 'winner' : ''}">
+                <h4>${entry.player}</h4>
+                <div class="score">${entry.score}</div>
+                ${index === 0 ? '<p style="color: #28a745; font-weight: bold; margin-top: 10px;">🏆 Winner!</p>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        finalResults.innerHTML = scoresHtml;
+      } else {
+        finalResults.innerHTML = `
+          <h3>🎉 Game Complete!</h3>
+          <p>Thanks for playing! Great game everyone!</p>
+        `;
+      }
+    }
+
+    function setupSocketListeners() {
+      if (!socket) return;
+
+      // Set up heartbeat/ping-pong mechanism
+      setInterval(() => {
+        if (socket && socket.connected) {
+          socket.emit('ping');
+        }
+      }, 30000); // Ping every 30 seconds
+
+      socket.on('pong', () => {
+        // Connection is alive
+        console.log('[Reconnection] Connection heartbeat received');
+      });
+
+      // Handle connection state changes
+      socket.on('connect', () => {
+        console.log('[Reconnection] Connected to server');
+        
+        // If we have a previous session, try to reconnect
+        if (currentLobbyCode && currentUser) {
+          console.log('[Reconnection] Attempting to reconnect to lobby:', currentLobbyCode);
+          attemptReconnection();
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[Reconnection] Disconnected from server');
+        showReconnectionStatus('Disconnected. Attempting to reconnect...');
+      });
+
+      socket.on('reconnect', () => {
+        console.log('[Reconnection] Reconnected to server');
+        hideReconnectionStatus();
+        
+        // Try to reconnect to lobby if we were in one
+        if (currentLobbyCode && currentUser) {
+          attemptReconnection();
+        }
+      });
+
+      // Handle player disconnection notifications
+      socket.on('playerDisconnected', (data) => {
+        console.log('[Reconnection] Player disconnected:', data);
+        if (data.temporary) {
+          showPlayerStatus(`${data.player.username} disconnected (reconnecting...)`, 'warning');
+        } else {
+          showPlayerStatus(`${data.player.username} left the lobby`, 'info');
+        }
+      });
+
+      socket.on('playerReconnected', (data) => {
+        console.log('[Reconnection] Player reconnected:', data);
+        showPlayerStatus(`${data.player.username} has reconnected`, 'success');
+      });
+
+      socket.on('playerPermanentlyDisconnected', (data) => {
+        console.log('[Reconnection] Player permanently disconnected:', data);
+        showPlayerStatus(`${data.player.username} has left the game`, 'error');
+      });
+
+      socket.on('playerListUpdate', (players) => {
+        playerList.innerHTML = '';
+        players.forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          playerList.appendChild(li);
+        });
+      });
+
+      socket.on('playerGameStarted', ({ game, gameId }) => {
+        console.log('Player received playerGameStarted:', game, gameId);
+        try {
+          showGame(game, gameId, 'player');
+        } catch (error) {
+          console.error('Error in showGame:', error);
+        }
+      });
+
+    socket.on('lobbyClosed', () => {
+      //alert('Lobby was closed by host.');
+      window.location.reload();
+    });
+
+    // Game end screen events
+    socket.on('gameEnded', (data) => {
+      console.log('Game ended:', data);
+      showGameEndScreen(data);
+    });
+
+    // Game end screen button handlers
+    document.getElementById('playAgainBtn').onclick = () => {
+      // Return to lobby to select another game
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+    document.getElementById('returnToLobbyBtn').onclick = () => {
+      // Return to lobby
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+      // Exit lobby button
+      document.getElementById('exitLobby').onclick = () => {
+        if (confirm('Are you sure you want to exit the lobby?')) {
+          // Leave the lobby properly
+          socket.emit('leaveLobby', { code: currentLobbyCode });
+          // Return to homepage
+          window.location.reload();
+        }
+      };
+    }
+
+    // Reconnection helper functions
+    function attemptReconnection() {
+      if (!currentLobbyCode || !currentUser) return;
+      
+      console.log('[Reconnection] Attempting to reconnect to lobby:', currentLobbyCode);
+      
+      socket.emit('reconnect', {
+        playerId: currentUser.id,
+        lobbyCode: currentLobbyCode
+      }, (response) => {
+        if (response?.success) {
+          console.log('[Reconnection] Successfully reconnected to lobby');
+          hideReconnectionStatus();
+          showPlayerStatus('Reconnected successfully!', 'success');
+          
+          // Update lobby state
+          currentLobbyCode = response.lobbyCode;
+          myName = response.player.username;
+          
+          // If we're in a game, the server will handle game state restoration
+          if (response.gameId) {
+            console.log('[Reconnection] Restoring game state for:', response.gameId);
+          }
+        } else {
+          console.log('[Reconnection] Failed to reconnect:', response?.error);
+          showReconnectionStatus(`Reconnection failed: ${response?.error || 'Unknown error'}`);
+          
+          // After 10 seconds, redirect to home
+          setTimeout(() => {
+            window.location.reload();
+          }, 10000);
+        }
+      });
+    }
+
+    function showReconnectionStatus(message) {
+      // Create or update reconnection status element
+      let statusEl = document.getElementById('reconnectionStatus');
+      if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'reconnectionStatus';
+        statusEl.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background: #ffc107;
+          color: #000;
+          padding: 10px;
+          text-align: center;
+          z-index: 10000;
+          font-weight: bold;
+        `;
+        document.body.appendChild(statusEl);
+      }
+      statusEl.textContent = message;
+      statusEl.style.display = 'block';
+    }
+
+    function hideReconnectionStatus() {
+      const statusEl = document.getElementById('reconnectionStatus');
+      if (statusEl) {
+        statusEl.style.display = 'none';
+      }
+    }
+
+    function showPlayerStatus(message, type = 'info') {
+      // Create a temporary status message
+      const statusEl = document.createElement('div');
+      const colors = {
+        info: '#007bff',
+        success: '#28a745',
+        warning: '#ffc107',
+        error: '#dc3545'
+      };
+      
+      statusEl.style.cssText = `
+        position: fixed;
+        top: 50px;
+        right: 20px;
+        background: ${colors[type] || colors.info};
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      `;
+      statusEl.textContent = message;
+      
+      document.body.appendChild(statusEl);
+      
+      // Remove after 3 seconds
+      setTimeout(() => {
+        if (statusEl.parentNode) {
+          statusEl.parentNode.removeChild(statusEl);
+        }
+      }, 3000);
+    }
+
+    // Store session data in localStorage for reconnection
+    function storeSessionData() {
+      if (currentLobbyCode && currentUser) {
+        localStorage.setItem('gameSession', JSON.stringify({
+          lobbyCode: currentLobbyCode,
+          userId: currentUser.id,
+          username: currentUser.username,
+          timestamp: Date.now()
+        }));
+      }
+    }
+
+    function loadSessionData() {
+      try {
+        const sessionData = localStorage.getItem('gameSession');
+        if (sessionData) {
+          const session = JSON.parse(sessionData);
+          // Check if session is not too old (1 hour)
+          if (Date.now() - session.timestamp < 3600000) {
+            return session;
+          }
+        }
+      } catch (error) {
+        console.error('[Reconnection] Error loading session data:', error);
+      }
+      return null;
+    }
+
+    function clearSessionData() {
+      localStorage.removeItem('gameSession');
+    }
+
+    // Store session data when joining lobby
+    function onJoinLobby() {
+      storeSessionData();
+    }
+
+    // Clear session data when leaving
+    function onLeaveLobby() {
+      clearSessionData();
+    }
+
+    const authView = document.getElementById('authView');
+    const homeView = document.getElementById('homeView');
+    const lobbyView = document.getElementById('lobbyView');
+    const gameView = document.getElementById('gameView');
+    const gameEndView = document.getElementById('gameEndView');
+    const codeDisplay = document.getElementById('codeDisplay');
+    const playerList = document.getElementById('playerList');
+    const gameList = document.getElementById('gameList');
+    const gameName = document.getElementById('gameName');
+    const roleDisplay = document.getElementById('roleDisplay');
+    const userDisplayName = document.getElementById('userDisplayName');
+    const userCoins = document.getElementById('userCoins');
+    const finalResults = document.getElementById('finalResults');
+
+    let currentUser = null;
+
+    // Check authentication status on page load
+    checkAuthStatus();
+    
+    // Check for stored session and attempt reconnection
+    window.addEventListener('load', () => {
+      const sessionData = loadSessionData();
+      if (sessionData && currentUser && currentUser.id === sessionData.userId) {
+        console.log('[Reconnection] Found stored session, attempting reconnection');
+        // Attempt to reconnect after a short delay to ensure socket is ready
+        setTimeout(() => {
+          if (socket && socket.connected) {
+            attemptReconnection();
+          }
+        }, 1000);
+      }
+    });
+
+    // Authentication functions
+    async function checkAuthStatus() {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          showAuthView();
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        showAuthView();
+      }
+    }
+
+    function showAuthView() {
+      authView.style.display = 'block';
+      homeView.style.display = 'none';
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+    }
+
+    function showHomeView() {
+      authView.style.display = 'none';
+      homeView.style.display = 'block';
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      gameEndView.style.display = 'none';
+      userDisplayName.textContent = currentUser.username;
+      userCoins.textContent = currentUser.coins;
+    }
+
+    // Login function
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+
+      if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed');
+      }
+    }
+
+    // Register function
+    async function register() {
+      const username = document.getElementById('registerUsername').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+
+      if (!username || !email || !password) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, email, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = data.user;
+          showHomeView();
+        } else {
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed');
+      }
+    }
+
+    // Logout function
+    async function logout() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentUser = null;
+          showAuthView();
+          // Disconnect from socket
+          socket.disconnect();
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+
+    // Store functionality moved to separate page
+
+    // Image Gallery Functions
+    let currentGalleryImages = [];
+    let currentImageIndex = 0;
+
+    function openImageGallery(gameId) {
+      // Find the game data
+      const game = window.currentStoreGames?.find(g => g.id === gameId);
+      if (!game || !game.images || game.images.length === 0) {
+        alert('No images available for this game');
+        return;
+      }
+
+      currentGalleryImages = game.images;
+      currentImageIndex = 0;
+      
+      const modal = document.getElementById('imageGalleryModal');
+      modal.style.display = 'block';
+      
+      updateGalleryDisplay();
+    }
+
+    function closeImageGallery() {
+      const modal = document.getElementById('imageGalleryModal');
+      modal.style.display = 'none';
+    }
+
+    function updateGalleryDisplay() {
+      const mainImage = document.getElementById('galleryMainImage');
+      const caption = document.getElementById('galleryCaption');
+      const thumbnails = document.getElementById('galleryThumbnails');
+      
+      if (currentGalleryImages.length === 0) return;
+      
+      const currentImage = currentGalleryImages[currentImageIndex];
+      mainImage.src = currentImage.url;
+      mainImage.alt = currentImage.caption || 'Game Image';
+      caption.textContent = currentImage.caption || `Image ${currentImageIndex + 1} of ${currentGalleryImages.length}`;
+      
+      // Update thumbnails
+      thumbnails.innerHTML = '';
+      currentGalleryImages.forEach((image, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = image.url;
+        thumb.className = `gallery-thumbnail ${index === currentImageIndex ? 'active' : ''}`;
+        thumb.onclick = () => {
+          currentImageIndex = index;
+          updateGalleryDisplay();
+        };
+        thumbnails.appendChild(thumb);
+      });
+    }
+
+    function previousImage() {
+      if (currentGalleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex - 1 + currentGalleryImages.length) % currentGalleryImages.length;
+      updateGalleryDisplay();
+    }
+
+    function nextImage() {
+      if (currentGalleryImages.length === 0) return;
+      currentImageIndex = (currentImageIndex + 1) % currentGalleryImages.length;
+      updateGalleryDisplay();
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('imageGalleryModal');
+      if (event.target === modal) {
+        closeImageGallery();
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(event) {
+      const modal = document.getElementById('imageGalleryModal');
+      if (modal.style.display === 'block') {
+        if (event.key === 'ArrowLeft') {
+          previousImage();
+        } else if (event.key === 'ArrowRight') {
+          nextImage();
+        } else if (event.key === 'Escape') {
+          closeImageGallery();
+        }
+      }
+    });
+
+    // Store button
+    document.getElementById('storeBtn').onclick = () => {
+      window.location.href = '/store.html';
+    };
+
+    // Creator dashboard button
+    document.getElementById('creatorBtn').onclick = () => {
+      window.location.href = '/creator';
+    };
+
+    // Authentication event listeners
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('registerBtn').onclick = register;
+    document.getElementById('logoutBtn').onclick = logout;
+    
+    // Quick host buttons (no account needed)
+    document.getElementById('quickHostBtn').onclick = () => {
+      window.open('/host.html', '_blank');
+    };
+    document.getElementById('quickHostBtn2').onclick = () => {
+      window.open('/host.html', '_blank');
+    };
+    
+    document.getElementById('showRegister').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'block';
+    };
+    
+    document.getElementById('showLogin').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('loginForm').style.display = 'block';
+    };
+
+    // Enter key handlers for forms
+    document.getElementById('loginPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') login();
+    };
+    
+    document.getElementById('registerPassword').onkeypress = (e) => {
+      if (e.key === 'Enter') register();
+    };
+
+    document.getElementById('createLobby').onclick = () => {
+      // Redirect to host screen
+      window.open('/host.html', '_blank');
+    };
+
+    document.getElementById('joinAsPlayer').onclick = () => {
+      const joinSection = document.getElementById('joinSection');
+      joinSection.style.display = joinSection.style.display === 'none' ? 'block' : 'none';
+  };
+
+
+    document.getElementById('joinLobby').onclick = () => {
+      const code = document.getElementById('lobbyCode').value.trim().toUpperCase();
+      if (!code) return alert('Enter lobby code!');
+      
+      // Create socket connection when joining lobby
+      socket = io('/lobby');
+      
+      // Make socket available to iframes
+      window.socket = socket;
+      
+      // Set up socket event listeners
+      setupSocketListeners();
+      
+      const username = currentUser ? currentUser.username : "GUEST";
+      const userId = currentUser ? currentUser.id : null;
+      socket.emit('joinLobby', { code, username, userId }, (res) => {
+        if (res?.error) return alert(res.error);
+        
+        currentLobbyCode = res.code;
+        myName = res.username;
+        showLobby(res.code, res.games);
+        
+        // Store session data for reconnection
+        onJoinLobby();
+      });
+    };
+
+
+    // Exit lobby button
+    document.getElementById('exitLobby').onclick = () => {
+      if (confirm('Are you sure you want to exit the lobby?')) {
+        // Leave the lobby properly
+        socket.emit('leaveLobby', { code: currentLobbyCode });
+        // Clear session data
+        onLeaveLobby();
+        // Return to homepage
+        window.location.reload();
+      }
+    };
+
+    function showLobby(code, games) {
+      homeView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      codeDisplay.textContent = code;
+      renderGameList(games);
+    }
+
+    function renderGameList(games) {
+      gameList.innerHTML = '';
+      games.forEach(game => {
+        const div = document.createElement('div');
+        div.className = 'game-option';
+        
+        const gameHtml = `
+          <div style="font-size: 1.2em; font-weight: bold;">${game.name}</div>
+          <div class="game-info">${game.description || 'Fun party game!'}</div>
+          <div class="game-players">👥 ${game.minPlayers}-${game.maxPlayers} players</div>
+        `;
+        
+        div.innerHTML = gameHtml;
+        div.onclick = () => {
+          socket.emit('selectGame', { code: currentLobbyCode, gameId: game.id });
+        };
+        gameList.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>

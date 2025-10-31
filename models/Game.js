@@ -42,10 +42,6 @@ const gameSchema = new mongoose.Schema({
     type: String,
     default: '🎮'
   },
-  logo: {
-    type: String,
-    default: null // Path to logo file: /game-logos/{gameId}.png
-  },
   images: [{
     url: {
       type: String,
@@ -142,22 +138,6 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: false // Games need admin approval
   },
-  submittedForApproval: {
-    type: Boolean,
-    default: false
-  },
-  hasPendingUpdate: {
-    type: Boolean,
-    default: false
-  },
-  pendingUpdatePath: {
-    type: String,
-    default: null
-  },
-  pendingUpdateSubmittedAt: {
-    type: Date,
-    default: null
-  },
   version: {
     type: String,
     default: '1.0.0'
@@ -180,6 +160,13 @@ const gameSchema = new mongoose.Schema({
     default: 0
   },
   
+  // Heat score for trending/popular games
+  heat: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
   // Deployment tracking
   deployedAt: {
     type: Date,
@@ -188,6 +175,29 @@ const gameSchema = new mongoose.Schema({
   folderPath: {
     type: String,
     default: null // Path to game folder in /games directory
+  },
+  
+  // Pending update tracking
+  hasPendingUpdate: {
+    type: Boolean,
+    default: false
+  },
+  pendingUpdateFolderPath: {
+    type: String,
+    default: null // Path to {gameId}_update folder
+  },
+  pendingUpdateSubmittedAt: {
+    type: Date,
+    default: null
+  },
+  pendingUpdateStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: null
+  },
+  submittedForApproval: {
+    type: Boolean,
+    default: false
   },
   
   createdAt: {
@@ -210,7 +220,7 @@ gameSchema.methods.updateAverageRating = function() {
 };
 
 // Method to add or update a rating
-gameSchema.methods.addRating = async function(userId, rating, reviewTitle = '', review = '') {
+gameSchema.methods.addRating = async function(userId, rating, review = '', reviewTitle = '') {
   // Remove existing rating from this user
   this.ratings = this.ratings.filter(r => !r.userId.equals(userId));
   
@@ -218,7 +228,7 @@ gameSchema.methods.addRating = async function(userId, rating, reviewTitle = '', 
   this.ratings.push({
     userId,
     rating,
-    reviewTitle,
+    reviewTitle: reviewTitle || '',
     review
   });
   
@@ -229,10 +239,15 @@ gameSchema.methods.addRating = async function(userId, rating, reviewTitle = '', 
 
 // Static method to search games
 gameSchema.statics.searchGames = function(query, category, sortBy = 'averageRating') {
-  let searchQuery = { isActive: true };
+  let searchQuery = { isActive: true, approved: true };
   
-  // Add category filter
-  if (category && category !== 'all') {
+  // Handle special categories
+  if (category === 'hot') {
+    // Hot category shows games with heat > 0, sorted by heat
+    searchQuery.heat = { $gt: 0 };
+    sortBy = 'heat'; // Override sort for hot category
+  } else if (category && category !== 'all') {
+    // Regular category filter
     searchQuery.category = category;
   }
   
@@ -249,6 +264,9 @@ gameSchema.statics.searchGames = function(query, category, sortBy = 'averageRati
   // Sort options
   let sort = {};
   switch (sortBy) {
+    case 'heat':
+      sort = { heat: -1, averageRating: -1, createdAt: -1 };
+      break;
     case 'averageRating':
       sort = { averageRating: -1, totalRatings: -1, createdAt: -1 };
       break;

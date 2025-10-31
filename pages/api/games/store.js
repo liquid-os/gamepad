@@ -62,17 +62,18 @@ export default async function handler(req, res) {
     const config = require('../../../config');
     const freeGames = config.FREE_GAMES || [];
 
-    // Process games to include ownership info (no coin affordability check)
+    // Process games to include ownership and affordability info
     const processedGames = games.map(game => {
       const owned = user.ownedGames.some(owned => owned.gameId === game.gameId);
       const free = freeGames.includes(game.gameId);
       const accessible = owned || free;
+      const canAfford = user.coins >= game.price;
 
       return {
         id: game.gameId,
         name: game.name,
         description: game.description,
-        price: game.price, // Price stored in cents
+        price: game.price,
         minPlayers: game.minPlayers,
         maxPlayers: game.maxPlayers,
         category: game.category,
@@ -82,13 +83,15 @@ export default async function handler(req, res) {
         totalRatings: game.totalRatings,
         owned,
         free,
-        accessible
+        accessible,
+        canAfford
       };
     });
 
     return res.status(200).json({
       success: true,
-      games: processedGames
+      games: processedGames,
+      userCoins: user.coins
     });
   } catch (error) {
     console.error('Error in /api/games/store:', error);

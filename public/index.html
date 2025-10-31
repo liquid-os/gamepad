@@ -675,11 +675,19 @@
       <div class = "btn-flexbox" style="display: flex; gap: 10px; margin: 5px 0;">
         <button id="createLobby" class = "btn-cool" >Host Lobby</button>
         <button id="joinAsPlayer" class = "btn-cool" >Join as Player</button>
+        <button id="spectateLobby" class = "btn-cool" >Spectate</button>
       </div>
       <div id="joinSection" style="display: none;">
         <div class="input-group">
           <input id="lobbyCode" placeholder="Enter Lobby Code (4 letters)" style = "margin-top: 5px;" maxlength="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
         <button id="joinLobby" class = "btn-cool" style = "margin-top: 10px;">Join Lobby</button>
+
+        </div>
+      </div>
+      <div id="spectateSection" style="display: none;">
+        <div class="input-group">
+          <input id="spectateCode" placeholder="Enter Lobby Code (4 letters)" style = "margin-top: 5px;" maxlength="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+        <button id="spectateBtn" class = "btn-cool" style = "margin-top: 10px;">Spectate Lobby</button>
 
         </div>
       </div>
@@ -1460,8 +1468,10 @@
 
     document.getElementById('joinAsPlayer').onclick = () => {
       const joinSection = document.getElementById('joinSection');
+      const spectateSection = document.getElementById('spectateSection');
       const isHidden = joinSection.style.display === 'none';
       joinSection.style.display = isHidden ? 'block' : 'none';
+      spectateSection.style.display = 'none'; // Hide spectate section
       
       // Focus the lobby code input when showing the section
       if (isHidden) {
@@ -1471,8 +1481,47 @@
       }
     };
 
+    document.getElementById('spectateLobby').onclick = () => {
+      const spectateSection = document.getElementById('spectateSection');
+      const joinSection = document.getElementById('joinSection');
+      const isHidden = spectateSection.style.display === 'none';
+      spectateSection.style.display = isHidden ? 'block' : 'none';
+      joinSection.style.display = 'none'; // Hide join section
+      
+      // Focus the lobby code input when showing the section
+      if (isHidden) {
+        setTimeout(() => {
+          document.getElementById('spectateCode').focus();
+        }, 100); // Small delay to ensure the input is visible
+      }
+    };
 
-    document.getElementById('joinLobby').onclick = () => {
+    document.getElementById('spectateBtn').onclick = () => {
+      const code = document.getElementById('spectateCode').value.trim().toUpperCase();
+      if (!code) return alert('Enter lobby code!');
+      
+      // Open host view in spectate mode
+      window.open(`/host.html?spectate=${code}`, '_blank');
+    };
+
+    // Enter key handler for spectate code input
+    document.getElementById('spectateCode').onkeypress = (e) => {
+      if (e.key === 'Enter') {
+        const code = document.getElementById('spectateCode').value.trim().toUpperCase();
+        if (!code) return alert('Enter lobby code!');
+        window.open(`/host.html?spectate=${code}`, '_blank');
+      }
+    };
+
+
+    let isJoiningLobby = false;
+    document.getElementById('joinLobby').onclick = (e) => {
+      if (isJoiningLobby) return; // prevent double submit
+      isJoiningLobby = true;
+      const btn = e.currentTarget;
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Joining...';
       const code = document.getElementById('lobbyCode').value.trim().toUpperCase();
       if (!code) return alert('Enter lobby code!');
       
@@ -1488,7 +1537,13 @@
       const username = currentUser ? currentUser.username : "GUEST";
       const userId = currentUser ? currentUser.id : null;
       socket.emit('joinLobby', { code, username, userId }, (res) => {
-        if (res?.error) return alert(res.error);
+        if (res?.error) {
+          alert(res.error);
+          btn.disabled = false;
+          btn.textContent = originalText;
+          isJoiningLobby = false;
+          return;
+        }
         
         currentLobbyCode = res.code;
         myName = res.username;
@@ -1496,6 +1551,7 @@
         
         // Store session data for reconnection
         onJoinLobby();
+        // Keep button disabled after success
       });
     };
 
@@ -1519,6 +1575,15 @@
       renderGameList(games);
     }
 
+    let gameAlreadySelected = false;
+    function disableAllGameOptions() {
+      const options = document.querySelectorAll('.game-option');
+      options.forEach(opt => {
+        opt.style.pointerEvents = 'none';
+        opt.style.opacity = '0.6';
+      });
+    }
+
     function renderGameList(games) {
       gameList.innerHTML = '';
       games.forEach(game => {
@@ -1533,6 +1598,9 @@
         
         div.innerHTML = gameHtml;
         div.onclick = () => {
+          if (gameAlreadySelected) return;
+          gameAlreadySelected = true;
+          disableAllGameOptions();
           socket.emit('selectGame', { code: currentLobbyCode, gameId: game.id });
         };
         gameList.appendChild(div);

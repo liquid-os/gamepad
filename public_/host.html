@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Host Screen - Party Game Hub</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 800px;
+      width: 90%;
+      text-align: center;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      font-weight: 300;
+    }
+    
+    .lobby-code {
+      background: #667eea;
+      color: white;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      font-size: 2em;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    
+    .code-display {
+      font-size: 3em;
+      letter-spacing: 0.2em;
+      margin: 10px 0;
+    }
+    
+    #playerList {
+      list-style: none;
+      margin: 20px 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    
+    #playerList li {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+      font-size: 1.1em;
+      font-weight: 600;
+    }
+    
+    .game-option { 
+      cursor: pointer; 
+      padding: 20px; 
+      border: 2px solid #e1e5e9; 
+      margin: 10px 0; 
+      border-radius: 10px;
+      text-align: center;
+      font-weight: 600;
+      transition: all 0.3s;
+      position: relative;
+    }
+    .game-option:hover { 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    .game-info {
+      font-size: 0.9em;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+    
+    .game-players {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .host-controls {
+      margin: 30px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+    
+    .status-message {
+      font-size: 1.2em;
+      margin: 20px 0;
+      padding: 15px;
+      background: #e3f2fd;
+      border-radius: 10px;
+      border-left: 4px solid #2196f3;
+    }
+    
+    .game-screen {
+      display: none;
+      margin: 20px 0;
+    }
+    
+    .game-screen iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      border-radius: 10px;
+    }
+
+    .game-end-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px;
+      max-width: 600px;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    .game-end-actions {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 150px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+      background: #f8f9fa;
+      color: #495057;
+      border: 2px solid #e9ecef;
+    }
+
+    .btn-secondary:hover {
+      background: #e9ecef;
+      transform: translateY(-2px);
+    }
+
+    #finalResults {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      text-align: left;
+    }
+
+    .final-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .score-card {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      border-left: 4px solid #667eea;
+    }
+
+    .score-card.winner {
+      border-left-color: #28a745;
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    }
+
+    .score-card h4 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .score-card .score {
+      font-size: 2em;
+      font-weight: bold;
+      color: #28a745;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📺 Host Screen</h1>
+    
+    <div id="lobbyView">
+      <div class="lobby-code">
+        <div>Lobby Code</div>
+        <div class="code-display" id="codeDisplay">----</div>
+        <div style="font-size: 0.8em; opacity: 0.9;">Share this code with players</div>
+      </div>
+      
+      <div class="host-controls">
+        <h3>👥 Players Connected: <span id="playerCount">0</span></h3>
+        <ul id="playerList"></ul>
+        
+        <h3>🎮 Game Selection:</h3>
+        <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+          💡 <strong>Players select games on their devices!</strong><br>
+          The host (this screen) cannot select games. Players will choose from their available games.
+        </div>
+        <div id="gameList" style="display: none;"></div>
+      </div>
+      
+      <div class="status-message" id="statusMessage">
+        Waiting for players to join...
+      </div>
+    </div>
+
+    <div id="gameView" class="game-screen">
+      <h2>🎮 Game in Progress</h2>
+      <div id="gameStatus">Loading game...</div>
+    </div>
+
+    <div id="gameEndView" class="game-screen" style="display: none;">
+      <div class="game-end-container">
+        <h2>🎉 Game Complete!</h2>
+        <div id="finalResults"></div>
+        <div class="game-end-actions">
+          <button id="playAgainBtn" class="btn btn-primary">🎮 Play Another Game</button>
+          <button id="returnToLobbyBtn" class="btn btn-secondary">🏠 Return to Lobby</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io('/lobby');
+    const codeDisplay = document.getElementById('codeDisplay');
+    const playerList = document.getElementById('playerList');
+    const gameList = document.getElementById('gameList');
+    const playerCount = document.getElementById('playerCount');
+    const statusMessage = document.getElementById('statusMessage');
+    const lobbyView = document.getElementById('lobbyView');
+    const gameView = document.getElementById('gameView');
+    const gameEndView = document.getElementById('gameEndView');
+    const gameStatus = document.getElementById('gameStatus');
+    const finalResults = document.getElementById('finalResults');
+
+    let currentCode = null;
+    let currentGame = null;
+
+    // Create lobby as host (no authentication required)
+    socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
+
+      currentCode = res.code;
+      codeDisplay.textContent = res.code;
+      console.log('Host lobby created with code:', res.code);
+    });
+
+    socket.on('playerListUpdate', (players) => {
+      playerList.innerHTML = '';
+      playerCount.textContent = players.length;
+      
+      if (players.length === 0) {
+        statusMessage.textContent = 'Waiting for players to join...';
+        statusMessage.style.background = '#e3f2fd';
+        statusMessage.style.borderLeftColor = '#2196f3';
+      } else {
+        statusMessage.textContent = `${players.length} player(s) connected. Ready to start!`;
+        statusMessage.style.background = '#d4edda';
+        statusMessage.style.borderLeftColor = '#28a745';
+      }
+
+      players.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        playerList.appendChild(li);
+      });
+    });
+
+    // Update games when players join (host gets updated game list)
+    socket.on('gamesUpdated', (games) => {
+      // Host doesn't need to see games - players select them
+      console.log('Games updated for lobby:', games.length, 'games available');
+    });
+
+    socket.on('hostGameStarted', ({ game, gameId }) => {
+      currentGame = game;
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'block';
+      gameEndView.style.display = 'none';
+      
+      // Check if this is the RPG game - load animated scene
+      if (gameId === 'rpg') {
+        // Load full-screen animated battle scene
+        gameStatus.innerHTML = '';
+        
+        // Make socket available to iframe BEFORE creating it
+        window.socket = socket;
+        window.currentCode = currentCode;
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width: 100vw; height: 100vh; border: none; position: fixed; top: 0; left: 0; z-index: 9999;';
+        iframe.id = 'rpgHostFrame';
+        iframe.src = `/games/rpg/client/host-scene.html`;
+        
+        document.body.appendChild(iframe);
+        
+        console.log('RPG animated scene loaded');
+      } else if (gameId === 'fighter') {
+        // Load fighting game scene
+        gameStatus.innerHTML = '';
+        
+        // Make socket available to iframe
+        window.socket = socket;
+        window.currentCode = currentCode;
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'width: 100vw; height: 100vh; border: none; position: fixed; top: 0; left: 0; z-index: 9999;';
+        iframe.id = 'fighterHostFrame';
+        iframe.src = `/games/fighter/client/host-scene.html`;
+        
+        document.body.appendChild(iframe);
+        
+        console.log('Fighter game scene loaded');
+      } else {
+        // Standard host UI for other games
+        gameStatus.innerHTML = `
+          <h3>🎮 ${game.name}</h3>
+          <div id="gameStateDisplay">
+            <p>Game is running! Players are now playing on their devices.</p>
+            <p>This screen shows the game status for the TV.</p>
+          </div>
+          <button onclick="endGame()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin: 10px;">End Game</button>
+        `;
+      }
+    });
+
+    // Handle game state updates for the host
+    socket.on('hostGameUpdate', (data) => {
+      console.log('Host received game update:', data);
+      updateHostGameDisplay(data);
+    });
+
+    // Handle game end
+    socket.on('gameEnded', (data) => {
+      console.log('Game ended:', data);
+      showHostGameEndScreen(data);
+    });
+
+    // Game selection is handled by players, not the host
+
+    function updateHostGameDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      // Update the display based on the game type and data
+      if (currentGame && currentGame.id === 'tictactoe') {
+        updateTicTacToeHostDisplay(data);
+      } else if (currentGame && currentGame.id === 'trivia') {
+        updateTriviaHostDisplay(data);
+      } else if (currentGame && currentGame.id === 'wordgame') {
+        updateWordGameHostDisplay(data);
+      } else if (currentGame && currentGame.id === 'rpg') {
+        updateRPGHostDisplay(data);
+      } else {
+        // Generic display for unknown games
+        gameStateDisplay.innerHTML = `
+          <p><strong>Game:</strong> ${currentGame?.name || 'Unknown'}</p>
+          <p><strong>Status:</strong> ${data.status || 'In Progress'}</p>
+          <p><strong>Players:</strong> ${data.playerCount || 'Unknown'}</p>
+        `;
+      }
+    }
+
+    function updateTicTacToeHostDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      const board = data.board || [];
+      const currentTurn = data.currentTurn;
+      const gamePhase = data.gamePhase;
+      const winner = data.winner;
+
+      let statusText = '';
+      if (gamePhase === 'finished') {
+        if (winner) {
+          statusText = `🎉 Game Over! Winner: ${winner}`;
+        } else {
+          statusText = "🤝 It's a tie!";
+        }
+      } else if (gamePhase === 'playing') {
+        statusText = `🎯 Current Turn: ${currentTurn}`;
+      }
+
+      // Create a visual board for the host
+      const boardHtml = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; max-width: 300px; margin: 20px auto;">
+          ${board.map((cell, index) => `
+            <div style="border: 2px solid #333; padding: 20px; text-align: center; font-size: 2em; background: ${cell ? '#e3f2fd' : '#f5f5f5'};">
+              ${cell ? (data.playerSymbols && data.playerSymbols[cell] ? data.playerSymbols[cell] : '?') : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      gameStateDisplay.innerHTML = `
+        <h4>🎮 Tic Tac Toe</h4>
+        <p><strong>Status:</strong> ${statusText}</p>
+        ${boardHtml}
+      `;
+    }
+
+    function updateTriviaHostDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      const currentQuestion = data.currentQuestion;
+      const questionIndex = data.questionIndex;
+      const totalQuestions = data.totalQuestions || 10;
+      const scores = data.scores || {};
+      const gamePhase = data.gamePhase;
+      const answeredPlayers = data.answeredPlayers || [];
+      const remainingPlayers = data.remainingPlayers || [];
+      const questionStartTime = data.questionStartTime;
+
+      let displayHtml = `
+        <h4>🧠 Quick Trivia</h4>
+        <p><strong>Progress:</strong> Question ${questionIndex + 1} of ${totalQuestions}</p>
+      `;
+
+      if (gamePhase === 'question' && currentQuestion) {
+        // Calculate time elapsed
+        const timeElapsed = questionStartTime ? Math.floor((Date.now() - questionStartTime) / 1000) : 0;
+        const timeRemaining = Math.max(0, 30 - timeElapsed);
+        
+        displayHtml += `
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 10px 0;">
+            <h5>Current Question:</h5>
+            <p style="font-size: 1.2em; margin: 10px 0;">${currentQuestion.question}</p>
+            <p style="color: #666; font-size: 1.1em;">⏱️ Time remaining: ${timeRemaining}s</p>
+          </div>
+        `;
+
+        // Show real-time answer status
+        if (answeredPlayers.length > 0 || remainingPlayers.length > 0) {
+          displayHtml += `
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+              <h5>📝 Answer Status:</h5>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <h6 style="color: #28a745; margin: 5px 0;">✅ Answered (${answeredPlayers.length}):</h6>
+                  <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                    ${answeredPlayers.map(player => `
+                      <span style="background: #d4edda; color: #155724; padding: 5px 10px; border-radius: 15px; font-size: 0.9em;">
+                        ${player}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+                <div>
+                  <h6 style="color: #dc3545; margin: 5px 0;">⏳ Still thinking (${remainingPlayers.length}):</h6>
+                  <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                    ${remainingPlayers.map(player => `
+                      <span style="background: #f8d7da; color: #721c24; padding: 5px 10px; border-radius: 15px; font-size: 0.9em;">
+                        ${player}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      } else if (gamePhase === 'results') {
+        displayHtml += `
+          <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 10px 0;">
+            <h5>Results:</h5>
+            <p>Question completed! Showing results...</p>
+          </div>
+        `;
+      }
+
+      // Show scores with proper usernames
+      if (Object.keys(scores).length > 0) {
+        displayHtml += `
+          <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+            <h5>Current Scores:</h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+              ${Object.entries(scores).map(([playerName, score]) => `
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 5px;">
+                  <strong>${playerName}</strong><br>
+                  <span style="font-size: 1.5em; color: #28a745;">${score}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      gameStateDisplay.innerHTML = displayHtml;
+    }
+
+    function updateWordGameHostDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      const currentWord = data.currentWord;
+      const round = data.round;
+      const scores = data.scores || {};
+      const gamePhase = data.gamePhase;
+
+      let displayHtml = `
+        <h4>🔤 Word Association</h4>
+        <p><strong>Round:</strong> ${round || 1}</p>
+      `;
+
+      if (gamePhase === 'playing' && currentWord) {
+        displayHtml += `
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 10px 0;">
+            <h5>Current Word:</h5>
+            <p style="font-size: 2em; font-weight: bold; color: #667eea; margin: 10px 0;">${currentWord}</p>
+            <p style="color: #666;">Players are thinking of associations...</p>
+          </div>
+        `;
+      }
+
+      // Show scores with proper usernames
+      if (Object.keys(scores).length > 0) {
+        displayHtml += `
+          <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+            <h5>Current Scores:</h5>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+              ${Object.entries(scores).map(([playerName, score]) => `
+                <div style="text-align: center; padding: 10px; background: white; border-radius: 5px;">
+                  <strong>${playerName}</strong><br>
+                  <span style="font-size: 1.5em; color: #28a745;">${score}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      gameStateDisplay.innerHTML = displayHtml;
+    }
+
+    function updateRPGHostDisplay(data) {
+      const gameStateDisplay = document.getElementById('gameStateDisplay');
+      if (!gameStateDisplay) return;
+
+      const CLASS_ICONS = {
+        knight: '🛡️',
+        wizard: '🧙',
+        cleric: '✨',
+        rogue: '🗡️',
+        archer: '🏹',
+        druid: '🌿',
+        monk: '🧘',
+        warlock: '👹'
+      };
+
+      let displayHtml = `
+        <h4>Co-op RPG Quest</h4>
+        <p><strong>Phase:</strong> ${data.phase === 'class_selection' ? 'Class Selection' : `Combat - Round ${data.round || 1}`}</p>
+      `;
+
+      if (data.phase === 'class_selection') {
+        // Show class selection status
+        displayHtml += `
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 10px 0;">
+            <h5>Players Selecting Classes...</h5>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px;">
+        `;
+
+        if (data.players && data.players.length > 0) {
+          data.players.forEach(player => {
+            const classIcon = CLASS_ICONS[player.class] || '❓';
+            const className = player.class ? player.class.charAt(0).toUpperCase() + player.class.slice(1) : 'Selecting...';
+            displayHtml += `
+              <div style="text-align: center; padding: 15px; background: white; border-radius: 5px; border: 2px solid ${player.class ? '#22c55e' : '#e5e7eb'};">
+                <div style="font-size: 3em;">${classIcon}</div>
+                <strong>${player.username}</strong><br>
+                <span style="color: ${player.class ? '#22c55e' : '#666'};">${className}</span>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+          </div>
+        `;
+      } else if (data.phase === 'combat') {
+        // Show combat view
+        displayHtml += `
+          <div style="display: flex; gap: 20px; margin: 20px 0;">
+            <!-- Players Team -->
+            <div style="flex: 1; background: rgba(34, 197, 94, 0.1); padding: 15px; border-radius: 10px; border: 2px solid #22c55e;">
+              <h5 style="text-align: center; margin-bottom: 15px;">🛡️ Heroes</h5>
+        `;
+
+        if (data.players && data.players.length > 0) {
+          data.players.forEach(player => {
+            const classIcon = CLASS_ICONS[player.class] || '👤';
+            const healthPercent = (player.health / player.maxHealth) * 100;
+            const healthColor = healthPercent > 60 ? '#22c55e' : healthPercent > 30 ? '#eab308' : '#ef4444';
+            
+            displayHtml += `
+              <div style="background: white; color: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 2em;">${classIcon}</div>
+                <div style="flex: 1;">
+                  <strong>${player.username}</strong>
+                  <div style="background: #e5e7eb; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px;">
+                    <div style="background: ${healthColor}; width: ${healthPercent}%; height: 100%; transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.9em; margin-top: 3px;">
+                    ${player.health}/${player.maxHealth} HP 
+                    ${player.speed ? `⚡${player.speed}` : ''} 
+                    ${player.defense ? `🛡️${player.defense}` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+
+            <!-- VS Divider -->
+            <div style="display: flex; align-items: center; justify-content: center; font-size: 3em; opacity: 0.5;">
+              ⚔️
+            </div>
+
+            <!-- Enemies Team -->
+            <div style="flex: 1; background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 10px; border: 2px solid #ef4444;">
+              <h5 style="text-align: center; margin-bottom: 15px;">👹 Enemies</h5>
+        `;
+
+        if (data.enemies && data.enemies.length > 0) {
+          data.enemies.forEach(enemy => {
+            const healthPercent = (enemy.health / enemy.maxHealth) * 100;
+            const healthColor = healthPercent > 60 ? '#22c55e' : healthPercent > 30 ? '#eab308' : '#ef4444';
+            
+            displayHtml += `
+              <div style="background: white; color: #333; padding: 10px; margin: 5px 0; border-radius: 5px; display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 2em;">👹</div>
+                <div style="flex: 1;">
+                  <strong>${enemy.name}</strong>
+                  <div style="background: #e5e7eb; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 5px;">
+                    <div style="background: ${healthColor}; width: ${healthPercent}%; height: 100%; transition: width 0.3s;"></div>
+                  </div>
+                  <div style="font-size: 0.9em; margin-top: 3px;">
+                    ${enemy.health}/${enemy.maxHealth} HP 
+                    ${enemy.speed ? `⚡${enemy.speed}` : ''} 
+                    ${enemy.defense ? `🛡️${enemy.defense}` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        displayHtml += `
+            </div>
+          </div>
+        `;
+
+        // Show turn order if available
+        if (data.turnOrder && data.turnOrder.length > 0) {
+          displayHtml += `
+            <div style="background: #fff3cd; padding: 15px; border-radius: 10px; margin: 10px 0;">
+              <h5>Turn Order:</h5>
+              <div style="display: flex; gap: 10px; overflow-x: auto; margin-top: 10px;">
+          `;
+
+          data.turnOrder.forEach((turn, index) => {
+            const icon = turn.type === 'player' ? (CLASS_ICONS[turn.class] || '👤') : '👹';
+            const name = turn.type === 'player' ? turn.username : turn.name;
+            const isFirst = index === 0;
+
+            displayHtml += `
+              <div style="text-align: center; padding: 10px; background: ${isFirst ? '#fbbf24' : 'white'}; color: #333; border-radius: 5px; min-width: 80px; border: 2px solid ${isFirst ? '#f59e0b' : '#e5e7eb'};">
+                <div style="font-size: 2em;">${icon}</div>
+                <div style="font-size: 0.8em;">${name}</div>
+                <div style="font-weight: bold; color: #f59e0b;">${turn.speed}</div>
+              </div>
+            `;
+          });
+
+          displayHtml += `
+              </div>
+            </div>
+          `;
+        }
+
+        // Show message
+        if (data.message) {
+          displayHtml += `
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 10px 0; text-align: center;">
+              <strong>${data.message}</strong>
+            </div>
+          `;
+        }
+
+        // Show combat log if available
+        if (data.combatLog && data.combatLog.length > 0) {
+          displayHtml += `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin: 10px 0; max-height: 200px; overflow-y: auto;">
+              <h5>📜 Combat Log:</h5>
+          `;
+
+          data.combatLog.forEach(entry => {
+            displayHtml += `
+              <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 5px;">
+                <strong>${entry.actor}</strong> uses <em>${entry.action}</em>
+                ${entry.results && entry.results.length > 0 ? '<br>' + entry.results.join('<br>') : ''}
+              </div>
+            `;
+          });
+
+          displayHtml += `
+            </div>
+          `;
+        }
+      }
+
+      gameStateDisplay.innerHTML = displayHtml;
+    }
+
+    function showHostGameEndScreen(data) {
+      console.log('Showing host game end screen:', data);
+      
+      // Hide other views and show end screen
+      lobbyView.style.display = 'none';
+      gameView.style.display = 'none';
+      gameEndView.style.display = 'block';
+      
+      // Display final results
+      if (data.scores && Object.keys(data.scores).length > 0) {
+        const sortedScores = Object.entries(data.scores)
+          .map(([player, score]) => ({ player, score }))
+          .sort((a, b) => b.score - a.score);
+        
+        const scoresHtml = `
+          <h3>🏆 Final Scores</h3>
+          <div class="final-scores">
+            ${sortedScores.map((entry, index) => `
+              <div class="score-card ${index === 0 ? 'winner' : ''}">
+                <h4>${entry.player}</h4>
+                <div class="score">${entry.score}</div>
+                ${index === 0 ? '<p style="color: #28a745; font-weight: bold; margin-top: 10px;">🏆 Winner!</p>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        finalResults.innerHTML = scoresHtml;
+      } else {
+        finalResults.innerHTML = `
+          <h3>🎉 Game Complete!</h3>
+          <p>Thanks for playing! Great game everyone!</p>
+        `;
+      }
+    }
+
+    // Game end screen button handlers
+    document.getElementById('playAgainBtn').onclick = () => {
+      // Return to lobby to select another game
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+    document.getElementById('returnToLobbyBtn').onclick = () => {
+      // Return to lobby
+      gameEndView.style.display = 'none';
+      lobbyView.style.display = 'block';
+      gameView.style.display = 'none';
+    };
+
+    function endGame() {
+      // Remove RPG iframe if exists
+      const rpgFrame = document.getElementById('rpgHostFrame');
+      if (rpgFrame) {
+        rpgFrame.remove();
+      }
+      
+      // Remove Fighter iframe if exists
+      const fighterFrame = document.getElementById('fighterHostFrame');
+      if (fighterFrame) {
+        fighterFrame.remove();
+      }
+      
+      socket.emit('endLobby', currentCode);
+      window.location.reload();
+    }
+
+    socket.on('lobbyClosed', () => {
+      // Remove RPG iframe if exists
+      const rpgFrame = document.getElementById('rpgHostFrame');
+      if (rpgFrame) {
+        rpgFrame.remove();
+      }
+      
+      // Remove Fighter iframe if exists
+      const fighterFrame = document.getElementById('fighterHostFrame');
+      if (fighterFrame) {
+        fighterFrame.remove();
+      }
+      
+      alert('Lobby was closed.');
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

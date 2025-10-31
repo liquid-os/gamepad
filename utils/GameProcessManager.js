@@ -128,10 +128,19 @@ class GameProcessManager {
           break;
 
         case 'SEND_TO_HOST':
-          // Find host socket ID from lobby
+          // Find host socket ID from lobby and send to host plus all spectators
           const lobby = this.getLobbyData(processInfo.lobbyId);
-          if (lobby && lobby.host) {
-            this.ioNamespace.to(lobby.host).emit(message.data.event, message.data.data);
+          if (lobby) {
+            // Send to host
+            if (lobby.host) {
+              this.ioNamespace.to(lobby.host).emit(message.data.event, message.data.data);
+            }
+            // Send to all spectators
+            if (lobby.spectators && lobby.spectators.length > 0) {
+              lobby.spectators.forEach(spectatorId => {
+                this.ioNamespace.to(spectatorId).emit(message.data.event, message.data.data);
+              });
+            }
           }
           break;
 

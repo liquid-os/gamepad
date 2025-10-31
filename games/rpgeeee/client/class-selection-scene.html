@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Selection Scene</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #classSelectionScene {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('/games/rpg/assets/backgrounds/camp.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* SVG filter to fully recolor white campfire gif to orange/yellow while preserving shading */
+        svg {
+            position: absolute;
+            width: 0; height: 0; overflow: hidden;
+        }
+
+        #campfire {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 340px;
+            height: 400px;
+            z-index: 5;
+            filter: url(#fireRecolor);
+        }
+
+        #spritesContainer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .sprite {
+            position: absolute;
+            transition: all 0.5s ease;
+            pointer-events: none;
+        }
+
+        .sprite img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: relative;
+            transition: filter 0.5s ease;
+            animation: breathe 3s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1) translateY(0); }
+            50% { transform: scale(1.02) translateY(-3px); }
+        }
+
+        .sprite.selected img {
+            filter: grayscale(100%) brightness(0.6);
+            animation: none;
+        }
+
+        .sprite .name-tag {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            white-space: nowrap;
+            font-weight: bold;
+            z-index: 60;
+        }
+
+        .sprite .checkmark {
+            position: absolute;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            font-size: 60px;
+            color: #22c55e;
+            z-index: 70;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            text-shadow: 0 0 20px rgba(34, 197, 94, 1), 0 0 40px rgba(34, 197, 94, 0.6);
+        }
+
+        .sprite.selected .checkmark {
+            transform: translateX(-50%) scale(1);
+        }
+
+        #roundIndicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            z-index: 100;
+            text-align: center;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #statusMessage {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            font-size: 20px;
+            z-index: 100;
+            text-align: center;
+            border: 3px solid rgba(59, 130, 246, 0.6);
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="classSelectionScene">
+        <!-- SVG Filter for campfire recoloring -->
+        <svg>
+            <defs>
+                <filter id="fireRecolor" color-interpolation-filters="sRGB">
+                    <!-- Convert to grayscale first -->
+                    <feColorMatrix type="saturate" values="0"/>
+                    <!-- Map grayscale to warm fire colors -->
+                    <feColorMatrix type="matrix" values="
+                        1.8 0   0   0  0
+                        0.9 0.9 0   0  0
+                        0   0   0.3 0  0
+                        0   0   0   1  0
+                    "/>
+                    <!-- Boost brightness -->
+                    <feComponentTransfer>
+                        <feFuncR type="linear" slope="1.4" intercept="0.1"/>
+                        <feFuncG type="linear" slope="1.2" intercept="0.05"/>
+                        <feFuncB type="linear" slope="0.8" intercept="0"/>
+                    </feComponentTransfer>
+                </filter>
+            </defs>
+        </svg>
+
+        <img id="campfire" src="/games/rpg/assets/campfire.gif" alt="Campfire">
+        
+        <div id="spritesContainer"></div>
+
+        <div id="roundIndicator">Choose Your Hero</div>
+        <div id="statusMessage">Players are selecting their classes...</div>
+    </div>
+
+    <script>
+        const socket = window.parent.socket || io('/lobby');
+        const lobbyCode = window.parent.currentCode;
+
+        const CLASSES = ['knight', 'wizard', 'cleric', 'rogue', 'druid', 'warlock', 'monk'];
+        
+        let gameState = {
+            sprites: {},
+            selectedClasses: {}
+        };
+
+        // Listen for class selection updates
+        socket.on('hostGameUpdate', (data) => {
+            if (data.phase === 'class_selection') {
+                updateClassSelection(data);
+            }
+        });
+
+        function updateClassSelection(data) {
+            const spritesContainer = document.getElementById('spritesContainer');
+            
+            // Clear existing sprites if this is first load
+            if (Object.keys(gameState.sprites).length === 0) {
+                spritesContainer.innerHTML = '';
+                createClassSprites();
+            }
+
+            // Update selected state for each class
+            if (data.players) {
+                // Reset all selections
+                Object.keys(gameState.sprites).forEach(className => {
+                    gameState.selectedClasses[className] = null;
+                });
+
+                // Mark selected classes
+                data.players.forEach(player => {
+                    if (player.class) {
+                        gameState.selectedClasses[player.class] = player.username;
+                    }
+                });
+
+                // Update sprite visuals
+                Object.keys(gameState.sprites).forEach(className => {
+                    const sprite = gameState.sprites[className];
+                    const isSelected = gameState.selectedClasses[className];
+                    
+                    if (isSelected) {
+                        sprite.element.classList.add('selected');
+                        sprite.nameTag.textContent = isSelected;
+                        sprite.nameTag.style.display = 'block';
+                    } else {
+                        sprite.element.classList.remove('selected');
+                        sprite.nameTag.textContent = className.charAt(0).toUpperCase() + className.slice(1);
+                        sprite.nameTag.style.display = 'block';
+                    }
+                });
+            }
+
+            // Update status message
+            if (data.message) {
+                document.getElementById('statusMessage').textContent = data.message;
+            }
+        }
+
+        function createClassSprites() {
+            const numClasses = CLASSES.length;
+            const radius = 250; // Distance from campfire
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2 + 180; // Slightly below center (fire is at bottom)
+            
+            CLASSES.forEach((className, index) => {
+                // Semi-circle at top: spread classes from left (PI) to right (0) above the fire
+                const angle = Math.PI - (index / (numClasses - 1)) * Math.PI;
+                const x = centerX + Math.cos(angle) * radius;
+                const y = centerY + Math.sin(angle) * radius;
+                
+                const sprite = createSprite(className, x, y);
+                gameState.sprites[className] = sprite;
+            });
+        }
+
+        function createSprite(className, x, y) {
+            const sprite = document.createElement('div');
+            sprite.className = 'sprite';
+            sprite.id = `sprite-${className}`;
+            sprite.style.left = `${x}px`;
+            sprite.style.top = `${y}px`;
+            sprite.style.width = '352px';
+            sprite.style.height = '405px';
+            sprite.style.transform = 'translate(-50%, -50%)';
+            
+            // Name tag
+            const nameTag = document.createElement('div');
+            nameTag.className = 'name-tag';
+            nameTag.textContent = className.charAt(0).toUpperCase() + className.slice(1);
+            sprite.appendChild(nameTag);
+            
+            // Checkmark (hidden by default)
+            const checkmark = document.createElement('div');
+            checkmark.className = 'checkmark';
+            checkmark.textContent = '✓';
+            sprite.appendChild(checkmark);
+            
+            // Character image with idle animation
+            const img = document.createElement('img');
+            img.src = `/games/rpg/assets/sprites/${className}_idle.png`;
+            img.alt = className;
+            sprite.appendChild(img);
+            
+            document.getElementById('spritesContainer').appendChild(sprite);
+            
+            return {
+                element: sprite,
+                nameTag: nameTag,
+                checkmark: checkmark,
+                img: img
+            };
+        }
+
+        console.log('Class Selection Scene initialized');
+    </script>
+</body>
+</html>
+

@@ -418,18 +418,47 @@
 
     let currentCode = null;
     let currentGame = null;
+    let isSpectator = false;
 
-    // Create lobby as host
-    socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
-      if (res?.error) {
-        alert(res.error);
-        return;
-      }
+    // Check if this is spectate mode from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const spectateCode = urlParams.get('spectate');
 
-      currentCode = res.code;
-      codeDisplay.textContent = res.code;
-      console.log('Host lobby created with code:', res.code);
-    });
+    if (spectateCode) {
+      // Spectate mode: join as spectator
+      isSpectator = true;
+      currentCode = spectateCode.toUpperCase();
+      codeDisplay.textContent = currentCode;
+      
+      // Show spectator indicator
+      const spectatorBadge = document.createElement('div');
+      spectatorBadge.style.cssText = 'background: #ff9800; color: white; padding: 10px; border-radius: 5px; margin: 10px 0; text-align: center; font-weight: bold;';
+      spectatorBadge.textContent = '👁️ SPECTATING - Read Only';
+      lobbyView.insertBefore(spectatorBadge, lobbyView.firstChild);
+      
+      socket.emit('spectateLobby', { code: currentCode }, (res) => {
+        if (res?.error) {
+          alert(res.error);
+          window.close();
+          return;
+        }
+        console.log('Spectator joined lobby:', currentCode);
+        
+        // If game already started, hostGameStarted will be sent by server
+      });
+    } else {
+      // Normal host mode: create lobby
+      socket.emit('createLobby', { username: 'HOST', userId: null }, (res) => {
+        if (res?.error) {
+          alert(res.error);
+          return;
+        }
+
+        currentCode = res.code;
+        codeDisplay.textContent = res.code;
+        console.log('Host lobby created with code:', res.code);
+      });
+    }
 
     socket.on('playerListUpdate', (players) => {
       playerList.innerHTML = '';
@@ -984,8 +1013,32 @@
         fighterFrame.remove();
       }
       
+      // Remove any game iframe
+      const gameFrame = document.querySelector('iframe[id$="HostFrame"]');
+      if (gameFrame) {
+        gameFrame.remove();
+      }
+      
       alert('Lobby was closed.');
-      window.location.reload();
+      if (isSpectator) {
+        window.close();
+      } else {
+        window.location.reload();
+      }
+    });
+
+    // Handle disconnect for spectators
+    socket.on('disconnect', () => {
+      if (isSpectator && currentCode) {
+        console.log('Spectator disconnected from lobby:', currentCode);
+      }
+    });
+
+    // Handle page unload for spectators - leave lobby cleanly
+    window.addEventListener('beforeunload', () => {
+      if (isSpectator && currentCode) {
+        socket.emit('leaveLobby', { code: currentCode });
+      }
     });
   </script>
 </body>
