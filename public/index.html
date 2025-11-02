@@ -855,8 +855,19 @@
       }
     }
 
+    // Track if listeners have been set up
+    let socketListenersSetup = false;
+    
     function setupSocketListeners() {
       if (!socket) return;
+      
+      // Prevent duplicate listeners
+      if (socketListenersSetup) {
+        console.log('[Socket] Listeners already set up, skipping');
+        return;
+      }
+      socketListenersSetup = true;
+      console.log('[Socket] Setting up listeners for the first time');
 
       // Set up heartbeat/ping-pong mechanism
       setInterval(() => {
@@ -1205,26 +1216,37 @@
         if (data.success && data.activeLobby) {
           const code = data.activeLobby.lobbyCode;
           
+          // Reset listener flag for new socket
+          socketListenersSetup = false;
+          
           // Create socket connection when reconnecting
           socket = io('/lobby');
           window.socket = socket;
+          
+          // Setup listeners BEFORE emitting joinLobby
           setupSocketListeners();
           
           const username = currentUser ? currentUser.username : "GUEST";
           const userId = currentUser ? currentUser.id : null;
           
+          // Emit joinLobby - socket.io will queue it if not connected yet
           socket.emit('joinLobby', { code, username, userId }, (res) => {
             if (res?.error) {
               alert(res.error);
               btn.disabled = false;
               btn.textContent = originalText;
               banner.style.display = 'none';
+              socket.disconnect();
               return;
             }
             
             currentLobbyCode = res.code;
             myName = res.username;
-            showLobby(res.code, res.games);
+            
+            // Don't show lobby if game is in progress - playerGameStarted will handle game view
+            if (!res.gameId) {
+              showLobby(res.code, res.games);
+            }
             onJoinLobby();
           });
         } else {

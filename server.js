@@ -486,6 +486,12 @@ io.of('/lobby').on('connection', socket => {
               game.onPlayerJoin(lobby, api, player, true);
             }
           }
+          
+          // Send playerGameStarted event to reconnected player to load the game view
+          io.of('/lobby').to(socket.id).emit('playerGameStarted', {
+            game: game.meta,
+            gameId: lobby.gameId
+          });
         }
       }
 
