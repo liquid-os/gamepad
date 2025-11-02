@@ -3024,55 +3024,76 @@ module.exports = {
     });
   },
 
-  onPlayerJoin(lobby, api, player) {
+  onPlayerJoin(lobby, api, player, isReconnection = false) {
+    // Standardized reconnection handling - system level detects reconnections
+    // This function now only handles new player joins
+    if (isReconnection) {
+      // This shouldn't happen - system should call onPlayerReconnect instead
+      // But fallback to reconnection logic for backward compatibility
+      console.log(`[RPG] onPlayerJoin called with isReconnection=true for ${player.username} - should use onPlayerReconnect`);
+      return this.onPlayerReconnect(lobby, api, player, player.previousSocketId);
+    }
+    
+    // NEW PLAYER: First time joining this game
+    console.log(`[RPG] New player ${player.username} joining game`);
+    
+    // Check if player already exists (shouldn't happen for new players, but safety check)
+    if (lobby.state.players[player.username]) {
+      console.log(`[RPG] Warning: Player ${player.username} already exists in game state - treating as reconnection`);
+      return this.onPlayerReconnect(lobby, api, player, null);
+    }
+    
+    lobby.state.players[player.username] = {
+      id: player.id,
+      username: player.username,
+      userId: player.userId,
+      class: null,
+      health: 0,
+      maxHealth: 0,
+      defense: 0,
+      actions: [],
+      items: [],
+      learnedSkills: [],
+      learnedTalents: [],
+      statusEffects: [], // Array of { effectId, duration, appliedBy }
+      abilityUses: {}, // Track uses per combat: { abilityId: remainingUses }
+      itemEffects: {}
+    };
+    
+    // Initialize item effects for the new player
+    applyItemEffects(lobby, player.username);
+    
+    // Send initial game state
+    sendFullGameState(lobby, api, player);
+  },
+
+  onPlayerReconnect(lobby, api, player, previousSocketId) {
+    // Standardized reconnection handler
     const existingPlayer = lobby.state.players[player.username];
     
-    if (existingPlayer) {
-      // RECONNECTION: Player already exists in game state
-      console.log(`[RPG] Player ${player.username} reconnecting (old socket: ${existingPlayer.id}, new socket: ${player.id})`);
-      
-      // Update socket.id for message routing
-      existingPlayer.id = player.id;
-      existingPlayer.userId = player.userId; // Update userId in case it changed
-      
-      // Send full game state to reconnected player
-      sendFullGameState(lobby, api, player);
-      
-      // Notify other players of reconnection
-      api.sendToAll('playerReconnected', {
-        username: player.username,
-        message: `${player.username} has reconnected`
-      });
-      
-      console.log(`[RPG] Player ${player.username} successfully reconnected with character data intact`);
-      
-    } else {
-      // NEW PLAYER: First time joining this game
-      console.log(`[RPG] New player ${player.username} joining game`);
-      
-      lobby.state.players[player.username] = {
-        id: player.id,
-        username: player.username,
-        userId: player.userId,
-        class: null,
-        health: 0,
-        maxHealth: 0,
-        defense: 0,
-        actions: [],
-        items: [],
-        learnedSkills: [],
-        learnedTalents: [],
-        statusEffects: [], // Array of { effectId, duration, appliedBy }
-        abilityUses: {}, // Track uses per combat: { abilityId: remainingUses }
-        itemEffects: {}
-      };
-      
-      // Initialize item effects for the new player
-      applyItemEffects(lobby, player.username);
-      
-      // Send initial game state
-      sendFullGameState(lobby, api, player);
+    if (!existingPlayer) {
+      console.log(`[RPG] Warning: onPlayerReconnect called for ${player.username} but player not found in game state`);
+      // Treat as new player
+      return this.onPlayerJoin(lobby, api, player, false);
     }
+    
+    // RECONNECTION: Player already exists in game state
+    console.log(`[RPG] Player ${player.username} reconnecting (old socket: ${previousSocketId || existingPlayer.id}, new socket: ${player.id})`);
+    
+    // Update socket.id for message routing (system should have already done this, but ensure it's correct)
+    existingPlayer.id = player.id;
+    existingPlayer.userId = player.userId; // Update userId in case it changed
+    
+    // Send full game state to reconnected player
+    sendFullGameState(lobby, api, player);
+    
+    // Notify other players of reconnection (system also sends this, but game can add game-specific info)
+    api.sendToAll('playerReconnected', {
+      username: player.username,
+      message: `${player.username} has reconnected`
+    });
+    
+    console.log(`[RPG] Player ${player.username} successfully reconnected with character data intact`);
   },
 
   onAction(lobby, api, player, data) {

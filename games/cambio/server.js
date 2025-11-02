@@ -138,13 +138,13 @@ function startGame(api) {
   
   api.sendToAll('gameStarted', gameData);
   
-  // Send each player their own hand
-  Object.keys(gameState.players).forEach(playerId => {
-    const playerHand = gameState.players[playerId].hand;
-    const validMoves = getValidMoves(playerHand, gameState.lastPlayedCard);
+  // Send each player their own hand (use username as key, playerId for message routing)
+  Object.keys(gameState.players).forEach(username => {
+    const player = gameState.players[username];
+    const validMoves = getValidMoves(player.hand, gameState.lastPlayedCard);
     
-    api.sendToPlayer(playerId, 'yourHand', {
-      hand: playerHand,
+    api.sendToPlayer(player.playerId, 'yourHand', {
+      hand: player.hand,
       validMoves: validMoves,
       lastPlayedCard: gameState.lastPlayedCard
     });
@@ -164,39 +164,42 @@ function startTurnTimer(api) {
   
   gameState.turnTimer = setTimeout(() => {
     // Player's turn timed out - auto pass
-    const currentPlayerId = Object.keys(gameState.players)[gameState.currentPlayer];
-    console.log(`[Cambio] Turn timeout for player ${currentPlayerId}`);
-    handlePass(api, currentPlayerId);
+    const usernames = Object.keys(gameState.players);
+    const currentUsername = usernames[gameState.currentPlayer];
+    console.log(`[Cambio] Turn timeout for player ${currentUsername}`);
+    handlePass(api, currentUsername);
   }, gameState.turnTimeLimit);
 }
 
-// Handle playing a card
-function handlePlayCard(api, playerId, cardId) {
-  console.log(`[Cambio] Player ${playerId} trying to play card ${cardId}`);
+// Handle playing a card (username is now the key)
+function handlePlayCard(api, username, cardId) {
+  console.log(`[Cambio] Player ${username} trying to play card ${cardId}`);
   
   // Check if it's the player's turn
-  const currentPlayerId = Object.keys(gameState.players)[gameState.currentPlayer];
-  if (playerId !== currentPlayerId) {
-    api.sendToPlayer(playerId, 'error', { message: 'Not your turn!' });
+  const usernames = Object.keys(gameState.players);
+  const currentUsername = usernames[gameState.currentPlayer];
+  if (username !== currentUsername) {
+    const player = gameState.players[username];
+    api.sendToPlayer(player ? player.playerId : username, 'error', { message: 'Not your turn!' });
     return;
   }
   
   // Check if game is in playing phase
-  if (gameState.gamePhase !== 'playing') {
-    api.sendToPlayer(playerId, 'error', { message: 'Game not in playing phase' });
+  const player = gameState.players[username];
+  if (!player) {
+    api.sendToPlayer(username, 'error', { message: 'Player not found' });
     return;
   }
   
-  const player = gameState.players[playerId];
-  if (!player) {
-    api.sendToPlayer(playerId, 'error', { message: 'Player not found' });
+  if (gameState.gamePhase !== 'playing') {
+    api.sendToPlayer(player.playerId, 'error', { message: 'Game not in playing phase' });
     return;
   }
   
   // Find the card in player's hand
   const cardIndex = player.hand.findIndex(card => card.id === cardId);
   if (cardIndex === -1) {
-    api.sendToPlayer(playerId, 'error', { message: 'Card not in hand' });
+    api.sendToPlayer(player.playerId, 'error', { message: 'Card not in hand' });
     return;
   }
   
@@ -222,19 +225,20 @@ function handlePlayCard(api, playerId, cardId) {
   
   // Check for win condition
   if (checkWinCondition(player.hand)) {
-    gameState.winner = playerId;
+    gameState.winner = username;
     gameState.gamePhase = 'ended';
     
     api.sendToAll('gameEnded', {
-      winner: playerId,
-      winnerName: api.getPlayerName(playerId),
+      winner: username,
+      winnerName: username,
       players: Object.values(gameState.players).map(p => ({
         playerId: p.playerId,
+        username: p.username,
         handSize: p.hand.length
       }))
     });
     
-    console.log(`[Cambio] Game ended! Winner: ${playerId}`);
+    console.log(`[Cambio] Game ended! Winner: ${username}`);
     return;
   }
   
@@ -245,6 +249,7 @@ function handlePlayCard(api, playerId, cardId) {
   const gameData = {
     players: Object.values(gameState.players).map(p => ({
       playerId: p.playerId,
+      username: p.username,
       handSize: p.hand.length,
       hasPassed: p.hasPassed
     })),
@@ -257,39 +262,42 @@ function handlePlayCard(api, playerId, cardId) {
   
   api.sendToAll('cardPlayed', gameData);
   
-  // Send updated hands to players
-  Object.keys(gameState.players).forEach(pid => {
-    const p = gameState.players[pid];
+  // Send updated hands to players (use playerId for message routing)
+  Object.keys(gameState.players).forEach(uname => {
+    const p = gameState.players[uname];
     const validMoves = getValidMoves(p.hand, gameState.lastPlayedCard);
+    const currentUname = Object.keys(gameState.players)[gameState.currentPlayer];
     
-    api.sendToPlayer(pid, 'yourHand', {
+    api.sendToPlayer(p.playerId, 'yourHand', {
       hand: p.hand,
       validMoves: validMoves,
       lastPlayedCard: gameState.lastPlayedCard,
-      isYourTurn: pid === Object.keys(gameState.players)[gameState.currentPlayer]
+      isYourTurn: uname === currentUname
     });
   });
   
   // Start next turn timer
   startTurnTimer(api);
   
-  console.log(`[Cambio] Card ${cardId} played by ${playerId}`);
+  console.log(`[Cambio] Card ${cardId} played by ${username}`);
 }
 
-// Handle passing
-function handlePass(api, playerId) {
-  console.log(`[Cambio] Player ${playerId} passed`);
+// Handle passing (username is now the key)
+function handlePass(api, username) {
+  console.log(`[Cambio] Player ${username} passed`);
   
   // Check if it's the player's turn (or auto-pass due to timeout)
-  const currentPlayerId = Object.keys(gameState.players)[gameState.currentPlayer];
-  if (playerId !== currentPlayerId) {
-    api.sendToPlayer(playerId, 'error', { message: 'Not your turn!' });
+  const usernames = Object.keys(gameState.players);
+  const currentUsername = usernames[gameState.currentPlayer];
+  if (username !== currentUsername) {
+    const player = gameState.players[username];
+    api.sendToPlayer(player ? player.playerId : username, 'error', { message: 'Not your turn!' });
     return;
   }
   
-  const player = gameState.players[playerId];
+  const player = gameState.players[username];
   if (!player) {
-    api.sendToPlayer(playerId, 'error', { message: 'Player not found' });
+    api.sendToPlayer(username, 'error', { message: 'Player not found' });
     return;
   }
   
@@ -334,21 +342,22 @@ function handlePass(api, playerId) {
     lastPlayedCard: gameState.lastPlayedCard,
     gamePhase: gameState.gamePhase,
     deckSize: gameState.discardPile.length,
-    passedPlayer: playerId
+    passedPlayer: username
   };
   
   api.sendToAll('playerPassed', gameData);
   
-  // Send updated hands to players
-  Object.keys(gameState.players).forEach(pid => {
-    const p = gameState.players[pid];
+  // Send updated hands to players (use playerId for message routing)
+  Object.keys(gameState.players).forEach(uname => {
+    const p = gameState.players[uname];
     const validMoves = getValidMoves(p.hand, gameState.lastPlayedCard);
+    const currentUname = Object.keys(gameState.players)[gameState.currentPlayer];
     
-    api.sendToPlayer(pid, 'yourHand', {
+    api.sendToPlayer(p.playerId, 'yourHand', {
       hand: p.hand,
       validMoves: validMoves,
       lastPlayedCard: gameState.lastPlayedCard,
-      isYourTurn: pid === Object.keys(gameState.players)[gameState.currentPlayer]
+      isYourTurn: uname === currentUname
     });
   });
   
@@ -356,20 +365,22 @@ function handlePass(api, playerId) {
   startTurnTimer(api);
 }
 
-// Handle drawing a card
-function handleDrawCard(api, playerId) {
-  console.log(`[Cambio] Player ${playerId} drawing a card`);
+// Handle drawing a card (username is now the key)
+function handleDrawCard(api, username) {
+  console.log(`[Cambio] Player ${username} drawing a card`);
   
   // Check if it's the player's turn
-  const currentPlayerId = Object.keys(gameState.players)[gameState.currentPlayer];
-  if (playerId !== currentPlayerId) {
-    api.sendToPlayer(playerId, 'error', { message: 'Not your turn!' });
+  const usernames = Object.keys(gameState.players);
+  const currentUsername = usernames[gameState.currentPlayer];
+  if (username !== currentUsername) {
+    const player = gameState.players[username];
+    api.sendToPlayer(player ? player.playerId : username, 'error', { message: 'Not your turn!' });
     return;
   }
   
-  const player = gameState.players[playerId];
+  const player = gameState.players[username];
   if (!player) {
-    api.sendToPlayer(playerId, 'error', { message: 'Player not found' });
+    api.sendToPlayer(username, 'error', { message: 'Player not found' });
     return;
   }
   
@@ -388,10 +399,10 @@ function handleDrawCard(api, playerId) {
     clearTimeout(gameState.turnTimer);
   }
   
-  // Send updated hand to player
+  // Send updated hand to player (use playerId for message routing)
   const validMoves = getValidMoves(player.hand, gameState.lastPlayedCard);
   
-  api.sendToPlayer(playerId, 'yourHand', {
+  api.sendToPlayer(player.playerId, 'yourHand', {
     hand: player.hand,
     validMoves: validMoves,
     lastPlayedCard: gameState.lastPlayedCard,
@@ -403,6 +414,7 @@ function handleDrawCard(api, playerId) {
   const gameData = {
     players: Object.values(gameState.players).map(p => ({
       playerId: p.playerId,
+      username: p.username,
       handSize: p.hand.length,
       hasPassed: p.hasPassed
     })),
@@ -414,7 +426,7 @@ function handleDrawCard(api, playerId) {
   
   api.sendToAll('cardDrawn', gameData);
   
-  console.log(`[Cambio] Player ${playerId} drew a card`);
+  console.log(`[Cambio] Player ${username} drew a card`);
 }
 
 // Initialize game when lobby starts
@@ -435,21 +447,39 @@ function initializeGame(api, lobby) {
     consecutivePasses: 0
   });
   
-  // Set up players
+  // Set up players (use username as key)
   lobby.players.forEach(player => {
-    gameState.players[player.id] = {
+    gameState.players[player.username] = {
       hand: [],
       hasPassed: false,
-      playerId: player.id
+      playerId: player.id, // Keep socket.id for message routing
+      username: player.username
     };
   });
   
   console.log('[Cambio] Game initialized with', Object.keys(gameState.players).length, 'players');
 }
 
-// Handle game actions
-function handleAction(api, action, playerId, data) {
-  console.log(`[Cambio] Action: ${action} from player ${playerId}`);
+// Handle game actions - updated to accept player object with username
+function handleAction(api, action, player, data) {
+  // Support both old signature (playerId as string) and new signature (player object)
+  let playerId, username;
+  if (typeof player === 'string') {
+    // Legacy: playerId passed as string
+    playerId = player;
+    // Try to find username from lobby state
+    username = Object.keys(gameState.players).find(key => gameState.players[key].playerId === playerId);
+    if (!username) {
+      console.log(`[Cambio] Warning: Could not find username for playerId ${playerId}`);
+      return;
+    }
+  } else {
+    // New: player object with username
+    playerId = player.id;
+    username = player.username;
+  }
+  
+  console.log(`[Cambio] Action: ${action} from player ${username} (${playerId})`);
   
   switch (action) {
     case 'startGame':
@@ -460,16 +490,16 @@ function handleAction(api, action, playerId, data) {
       
     case 'playCard':
       if (data && data.cardId) {
-        handlePlayCard(api, playerId, data.cardId);
+        handlePlayCard(api, username, data.cardId);
       }
       break;
       
     case 'pass':
-      handlePass(api, playerId);
+      handlePass(api, username);
       break;
       
     case 'drawCard':
-      handleDrawCard(api, playerId);
+      handleDrawCard(api, username);
       break;
       
     default:
@@ -478,14 +508,22 @@ function handleAction(api, action, playerId, data) {
   }
 }
 
-// Get game state for a specific player
-function getGameState(playerId) {
-  const player = gameState.players[playerId];
+// Get game state for a specific player (updated to use username)
+function getGameState(usernameOrPlayerId) {
+  // Support both username and playerId lookup for backward compatibility
+  let player = gameState.players[usernameOrPlayerId];
+  if (!player) {
+    // Try to find by playerId
+    player = Object.values(gameState.players).find(p => p.playerId === usernameOrPlayerId);
+  }
   if (!player) return null;
+  
+  const username = Object.keys(gameState.players).find(key => gameState.players[key] === player);
   
   return {
     players: Object.values(gameState.players).map(p => ({
       playerId: p.playerId,
+      username: p.username,
       handSize: p.hand.length,
       hasPassed: p.hasPassed
     })),
@@ -495,7 +533,7 @@ function getGameState(playerId) {
     deckSize: gameState.discardPile.length,
     yourHand: player.hand,
     validMoves: getValidMoves(player.hand, gameState.lastPlayedCard),
-    isYourTurn: playerId === Object.keys(gameState.players)[gameState.currentPlayer]
+    isYourTurn: username === Object.keys(gameState.players)[gameState.currentPlayer]
   };
 }
 

@@ -672,6 +672,12 @@
         <h3 style="color: white;" class="pixel-text">Welcome, <span id="userDisplayName"></span>!</h3>
       </div>
       
+      <div id="reconnectBanner" style="display: none; margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white; border-left: 4px solid #ffd700;">
+        <h4 style="margin: 0 0 10px 0; font-size: 1.1em;">🔌 Reconnect to Game</h4>
+        <p style="margin: 0 0 15px 0; font-size: 0.9em;">You have an active lobby: <strong id="reconnectLobbyCode"></strong> <span id="reconnectGameStatus" style="font-size: 0.85em;"></span></p>
+        <button id="reconnectBtn" style="background: #fff; color: #667eea; width: 100%; font-weight: bold; padding: 10px; border-radius: 5px; border: none; cursor: pointer;">⚡ Reconnect Now</button>
+      </div>
+      
       <div class = "btn-flexbox" style="display: flex; gap: 10px; margin: 5px 0;">
         <button id="createLobby" class = "btn-cool" >Host Lobby</button>
         <button id="joinAsPlayer" class = "btn-cool" >Join as Player</button>
@@ -1150,6 +1156,7 @@
         if (data.success) {
           currentUser = data.user;
           showHomeView();
+          checkActiveLobbyForReconnect();
         } else {
           showAuthView();
         }
@@ -1158,6 +1165,81 @@
         showAuthView();
       }
     }
+    
+    // Check for active lobby and show reconnect banner
+    async function checkActiveLobbyForReconnect() {
+      try {
+        const response = await fetch('/api/auth/activeLobby');
+        const data = await response.json();
+        
+        if (data.success && data.activeLobby) {
+          const banner = document.getElementById('reconnectBanner');
+          const lobbyCodeElement = document.getElementById('reconnectLobbyCode');
+          const gameStatusElement = document.getElementById('reconnectGameStatus');
+          
+          lobbyCodeElement.textContent = data.activeLobby.lobbyCode;
+          gameStatusElement.textContent = data.activeLobby.hasActiveGame ? '(Game in progress)' : '';
+          banner.style.display = 'block';
+        } else {
+          const banner = document.getElementById('reconnectBanner');
+          banner.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Failed to check active lobby:', error);
+      }
+    }
+    
+    // Handle reconnect button click
+    document.getElementById('reconnectBtn').onclick = async () => {
+      const banner = document.getElementById('reconnectBanner');
+      const btn = document.getElementById('reconnectBtn');
+      const originalText = btn.textContent;
+      
+      btn.disabled = true;
+      btn.textContent = 'Reconnecting...';
+      
+      try {
+        const response = await fetch('/api/auth/activeLobby');
+        const data = await response.json();
+        
+        if (data.success && data.activeLobby) {
+          const code = data.activeLobby.lobbyCode;
+          
+          // Create socket connection when reconnecting
+          socket = io('/lobby');
+          window.socket = socket;
+          setupSocketListeners();
+          
+          const username = currentUser ? currentUser.username : "GUEST";
+          const userId = currentUser ? currentUser.id : null;
+          
+          socket.emit('joinLobby', { code, username, userId }, (res) => {
+            if (res?.error) {
+              alert(res.error);
+              btn.disabled = false;
+              btn.textContent = originalText;
+              banner.style.display = 'none';
+              return;
+            }
+            
+            currentLobbyCode = res.code;
+            myName = res.username;
+            showLobby(res.code, res.games);
+            onJoinLobby();
+          });
+        } else {
+          alert('Active lobby not found');
+          banner.style.display = 'none';
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      } catch (error) {
+        console.error('Reconnect error:', error);
+        alert('Failed to reconnect');
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    };
 
     function showAuthView() {
       authView.style.display = 'block';

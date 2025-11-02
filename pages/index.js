@@ -7,6 +7,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(true);
   const [showJoinSection, setShowJoinSection] = useState(false);
+  const [activeLobby, setActiveLobby] = useState(null);
   
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -23,6 +24,12 @@ export default function Home() {
   useEffect(() => {
     checkAuthStatus();
   }, []);
+  
+  useEffect(() => {
+    if (currentUser) {
+      checkActiveLobby();
+    }
+  }, [currentUser]);
 
   async function checkAuthStatus() {
     try {
@@ -34,6 +41,25 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Auth check failed:', error);
+    }
+  }
+  
+  async function checkActiveLobby() {
+    try {
+      const response = await fetch('/api/auth/activeLobby');
+      const data = await response.json();
+      
+      if (data.success && data.activeLobby) {
+        setActiveLobby(data.activeLobby);
+      }
+    } catch (error) {
+      console.error('Failed to check active lobby:', error);
+    }
+  }
+  
+  function handleReconnect() {
+    if (activeLobby && activeLobby.lobbyCode) {
+      router.push(`/play?code=${activeLobby.lobbyCode}`);
     }
   }
 
@@ -259,6 +285,31 @@ export default function Home() {
             Logout
           </button>
         </div>
+        
+        {activeLobby && (
+          <div style={{ 
+            margin: '20px 0', 
+            padding: '20px', 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+            borderRadius: '10px',
+            color: 'white',
+            borderLeft: '4px solid #ffd700'
+          }}>
+            <h4 style={{ margin: '0 0 10px 0' }}>🔌 Reconnect to Game</h4>
+            <p style={{ margin: '0 0 15px 0', fontSize: '0.9em' }}>
+              You have an active lobby: <strong>{activeLobby.lobbyCode}</strong>
+              {activeLobby.hasActiveGame && ' (Game in progress)'}
+            </p>
+            <button onClick={handleReconnect} style={{ 
+              background: '#fff', 
+              color: '#667eea', 
+              width: '100%',
+              fontWeight: 'bold'
+            }}>
+              ⚡ Reconnect Now
+            </button>
+          </div>
+        )}
         
         <div style={{ display: 'flex', gap: '10px', margin: '20px 0', flexWrap: 'wrap' }}>
           <button onClick={() => window.open('/host', '_blank')} style={{ flex: 1 }}>

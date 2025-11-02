@@ -65,10 +65,12 @@ app.get('/creator', (req, res) => {
 // Import dynamic game loader and process manager
 const gameLoader = require('./utils/DynamicGameLoader');
 const gameProcessManager = require('./utils/GameProcessManager');
+const PlayerIdentity = require('./utils/PlayerIdentity');
 
 const lobbies = new Map(); // active lobbies
 const disconnectedPlayers = new Map(); // temporarily disconnected players
 const playerSessions = new Map(); // track player sessions for reconnection
+const activeLobbies = new Map(); // userId -> { lobbyCode, username, joinedAt } - track which lobby each user is in
 
 // Helper function to get available games for a single user
 async function getAvailableGamesForUser(userId) {
@@ -151,6 +153,8 @@ function wrapGameModule(gameModule) {
     meta: gameModule.meta,
     onInit: gameModule.onInit || (() => {}),
     onPlayerJoin: gameModule.onPlayerJoin || (() => {}),
+    onPlayerReconnect: gameModule.onPlayerReconnect || undefined, // Optional callback
+    onPlayerLeave: gameModule.onPlayerLeave || undefined, // Optional callback
     onAction: gameModule.onAction || (() => {}),
     onEnd: gameModule.onEnd || (() => {})
   };
@@ -182,7 +186,13 @@ function makeApi(io, lobby) {
     sendToPlayer: (pid, event, data) => io.to(pid).emit(event, data),
     sendToHost: (event, data) => io.to(lobby.host).emit(event, data),
     setState: (state) => { lobby.state = state; },
-    getState: () => lobby.state
+    getState: () => lobby.state,
+    // Reconnection helpers
+    getPlayerByUsername: (username) => PlayerIdentity.getPlayerByUsername(lobby, username),
+    getPlayerBySocketId: (socketId) => PlayerIdentity.getPlayerBySocketId(lobby, socketId),
+    isReconnection: (player) => PlayerIdentity.isReconnection(player),
+    updatePlayerSocketId: (username, newSocketId) => PlayerIdentity.updatePlayerSocketId(lobby, username, newSocketId),
+    getAllPlayers: () => PlayerIdentity.getAllPlayers(lobby)
   };
 }
 
@@ -396,50 +406,6 @@ io.of('/lobby').on('connection', socket => {
       return callback?.({ error: 'Host cannot join as player from same device' });
     }
 
-    // Check if a game is in progress and this player is reconnecting
-    if (lobby.gameId && lobby.gameStarted) {
-      const game = gameLoader.getGame(lobby.gameId);
-      if (game && typeof game.playerResync === 'function') {
-        console.log(`[RECONNECT] Checking if ${username} can reconnect to in-progress game`);
-        const api = makeApi(io.of('/lobby'), lobby);
-        const player = { id: socket.id, username, userId: userId };
-        
-        const reconnected = game.playerResync(lobby, api, player);
-        
-        if (reconnected) {
-          console.log(`[RECONNECT] Player ${username} reconnected to in-progress game`);
-          socket.join(code);
-          
-          // Update player session
-          if (userId) {
-            playerSessions.set(userId, {
-              username: username,
-              userId: userId,
-              lobbyCode: code,
-              joinedAt: Date.now()
-            });
-          }
-          
-          // Get available games for this lobby
-          const availableGames = await getAvailableGamesForLobby(lobby.playerIds);
-          
-          callback?.({
-            code,
-            games: availableGames,
-            username,
-            gameId: lobby.gameId,
-            isHost: false,
-            reconnected: true
-          });
-          
-          // Don't update player list since they're already in it
-          return;
-        } else {
-          console.log(`[RECONNECT] Player ${username} not found in game state, treating as new player`);
-        }
-      }
-    }
-
     // Prevent duplicate joins from same socket
     if (lobby.players.some(p => p.id === socket.id)) {
       const availableGamesDup = await getAvailableGamesForLobby(lobby.playerIds);
@@ -453,8 +419,106 @@ io.of('/lobby').on('connection', socket => {
       });
     }
 
-    const player = { id: socket.id, username, userId: userId };
+    // SYSTEM-LEVEL RECONNECTION DETECTION
+    // Check if a player with this username already exists in the lobby
+    const existingPlayer = PlayerIdentity.getPlayerByUsername(lobby, username);
+    let isReconnection = false;
+    let player;
+
+    if (existingPlayer) {
+      // RECONNECTION DETECTED
+      console.log(`[RECONNECT] Player ${username} reconnecting (old socket: ${existingPlayer.id}, new socket: ${socket.id})`);
+      isReconnection = true;
+      
+      // Update socket ID for message routing
+      const previousSocketId = existingPlayer.id;
+      PlayerIdentity.updatePlayerSocketId(lobby, username, socket.id);
+      
+      // Remove from disconnected players map if present
+      if (userId && disconnectedPlayers.has(userId)) {
+        disconnectedPlayers.delete(userId);
+      }
+      
+      // Update player object reference
+      player = existingPlayer;
+      player.id = socket.id;
+      player.userId = userId; // Update userId in case it changed
+      
+      socket.join(code);
+      
+      // Update player session
+      if (userId) {
+        playerSessions.set(userId, {
+          username: username,
+          userId: userId,
+          lobbyCode: code,
+          joinedAt: Date.now()
+        });
+        
+        // Track active lobby for user
+        activeLobbies.set(userId, {
+          lobbyCode: code,
+          username: username,
+          joinedAt: Date.now()
+        });
+      }
+
+      // Notify lobby of reconnection
+      io.of('/lobby').to(code).emit('playerReconnected', {
+        player: { username: player.username, id: player.id },
+        message: `${player.username} has reconnected`
+      });
+
+      // Handle game reconnection
+      if (lobby.gameId) {
+        const game = gameLoader.getGame(lobby.gameId);
+        if (game) {
+          const api = makeApi(io.of('/lobby'), lobby);
+          
+          // Call onPlayerReconnect if implemented, otherwise onPlayerJoin with isReconnection flag
+          if (typeof game.onPlayerReconnect === 'function') {
+            game.onPlayerReconnect(lobby, api, player, previousSocketId);
+          } else if (typeof game.onPlayerJoin === 'function') {
+            // Support both old signature (no isReconnection param) and new signature
+            if (game.onPlayerJoin.length === 3) {
+              game.onPlayerJoin(lobby, api, player);
+            } else {
+              game.onPlayerJoin(lobby, api, player, true);
+            }
+          }
+        }
+      }
+
+      // Get available games for this lobby
+      const availableGames = await getAvailableGamesForLobby(lobby.playerIds);
+
+      callback?.({
+        code,
+        games: availableGames,
+        username,
+        gameId: lobby.gameId,
+        isHost: false,
+        reconnected: true
+      });
+
+      // Update player list for everyone
+      io.of('/lobby').to(code).emit('playerListUpdate', lobby.players.map(p => p.username));
+      
+      return;
+    }
+
+    // NEW PLAYER JOIN
+    console.log(`[DEBUG] New player ${username} joining lobby ${code}`);
+    
+    // Create standardized player object
+    player = PlayerIdentity.createPlayer({
+      id: socket.id,
+      username: username,
+      userId: userId
+    });
+    
     lobby.players.push(player);
+    
     if (userId) {
       lobby.playerIds.push(userId);
       // Store player session for potential reconnection
@@ -464,15 +528,28 @@ io.of('/lobby').on('connection', socket => {
         lobbyCode: code,
         joinedAt: Date.now()
       });
+      
+      // Track active lobby for user (for home screen reconnection)
+      activeLobbies.set(userId, {
+        lobbyCode: code,
+        username: username,
+        joinedAt: Date.now()
+      });
     }
+    
     socket.join(code);
 
     // If game is already selected, initialize player for that game
     if (lobby.gameId) {
       const game = gameLoader.getGame(lobby.gameId);
-      if (game) {
+      if (game && typeof game.onPlayerJoin === 'function') {
         const api = makeApi(io.of('/lobby'), lobby);
-        game.onPlayerJoin(lobby, api, player);
+        // Support both old signature (no isReconnection param) and new signature
+        if (game.onPlayerJoin.length === 3) {
+          game.onPlayerJoin(lobby, api, player);
+        } else {
+          game.onPlayerJoin(lobby, api, player, false);
+        }
       }
     }
 
@@ -620,6 +697,13 @@ io.of('/lobby').on('connection', socket => {
     const lobby = lobbies.get(code);
     if (!lobby) return;
 
+    // Clear active lobby tracking for all players in this lobby
+    lobby.players.forEach(player => {
+      if (player.userId) {
+        activeLobbies.delete(player.userId);
+      }
+    });
+
     // Terminate game process if running
     if (gameProcessManager.hasActiveProcess(code)) {
       gameProcessManager.terminateProcess(code);
@@ -695,6 +779,9 @@ io.of('/lobby').on('connection', socket => {
         if (userIdIndex !== -1) {
           lobby.playerIds.splice(userIdIndex, 1);
         }
+        
+        // Clear active lobby tracking for this user
+        activeLobbies.delete(removedPlayer.userId);
       }
     }
 
@@ -733,44 +820,58 @@ io.of('/lobby').on('connection', socket => {
       console.log(`[DEBUG] Lobby host: ${lobby.host}, Lobby players:`, lobby.players.map(p => p.id));
       
       // Handle player disconnection with grace period for reconnection
-      const playerIndex = lobby.players.findIndex(p => p.id === socket.id);
-      if (playerIndex !== -1) {
-        const removedPlayer = lobby.players[playerIndex];
-        console.log(`[DEBUG] Player ${removedPlayer.username} disconnected from lobby ${code}`);
+      const disconnectedPlayer = PlayerIdentity.getPlayerBySocketId(lobby, socket.id);
+      if (disconnectedPlayer) {
+        console.log(`[DEBUG] Player ${disconnectedPlayer.username} disconnected from lobby ${code}`);
+        
+        // Mark player as disconnected using standardized tracking
+        PlayerIdentity.markPlayerDisconnected(lobby, disconnectedPlayer.username);
         
         // If player has a userId (authenticated user), give them a grace period for reconnection
-        if (removedPlayer.userId) {
+        if (disconnectedPlayer.userId) {
           // Give grace period for reconnection (both in lobby and during games)
           const gracePeriod = 90000; // 90s for both games and lobby
-          console.log(`[DEBUG] Player ${removedPlayer.username} disconnected - starting ${gracePeriod/1000}s grace period`);
+          console.log(`[DEBUG] Player ${disconnectedPlayer.username} disconnected - starting ${gracePeriod/1000}s grace period`);
           
           // Store disconnected player for potential reconnection
-          disconnectedPlayers.set(removedPlayer.userId, {
-            username: removedPlayer.username,
-            userId: removedPlayer.userId,
+          disconnectedPlayers.set(disconnectedPlayer.userId, {
+            username: disconnectedPlayer.username,
+            userId: disconnectedPlayer.userId,
             lobbyCode: code,
             disconnectedAt: Date.now(),
             gameId: lobby.gameId
           });
           
+          // Call game's onPlayerLeave if implemented
+          if (lobby.gameId) {
+            const game = gameLoader.getGame(lobby.gameId);
+            if (game && typeof game.onPlayerLeave === 'function') {
+              const api = makeApi(io.of('/lobby'), lobby);
+              game.onPlayerLeave(lobby, api, disconnectedPlayer);
+            }
+          }
+          
           // Notify other players about temporary disconnection
           io.of('/lobby').to(code).emit('playerDisconnected', {
-            player: removedPlayer,
-            message: `${removedPlayer.username} has disconnected (reconnecting...)`,
+            player: disconnectedPlayer,
+            message: `${disconnectedPlayer.username} has disconnected (reconnecting...)`,
             temporary: true
           });
           
           // Set a timeout to permanently remove player if they don't reconnect
           setTimeout(() => {
-            if (disconnectedPlayers.has(removedPlayer.userId)) {
-              console.log(`[DEBUG] Grace period expired for ${removedPlayer.username} - permanently removing`);
-              disconnectedPlayers.delete(removedPlayer.userId);
+            if (disconnectedPlayers.has(disconnectedPlayer.userId)) {
+              console.log(`[DEBUG] Grace period expired for ${disconnectedPlayer.username} - permanently removing`);
+              disconnectedPlayers.delete(disconnectedPlayer.userId);
+              
+              // Clear active lobby tracking for this user
+              activeLobbies.delete(disconnectedPlayer.userId);
               
               // Remove from lobby permanently
-              const currentPlayerIndex = lobby.players.findIndex(p => p.userId === removedPlayer.userId);
+              const currentPlayerIndex = lobby.players.findIndex(p => p.username === disconnectedPlayer.username);
               if (currentPlayerIndex !== -1) {
                 lobby.players.splice(currentPlayerIndex, 1);
-                const userIdIndex = lobby.playerIds.indexOf(removedPlayer.userId);
+                const userIdIndex = lobby.playerIds.indexOf(disconnectedPlayer.userId);
                 if (userIdIndex !== -1) {
                   lobby.playerIds.splice(userIdIndex, 1);
                 }
@@ -781,8 +882,8 @@ io.of('/lobby').on('connection', socket => {
               
               // Notify lobby of permanent disconnection
               io.of('/lobby').to(code).emit('playerPermanentlyDisconnected', {
-                player: removedPlayer,
-                message: `${removedPlayer.username} has left the ${lobby.gameId ? 'game' : 'lobby'}`
+                player: disconnectedPlayer,
+                message: `${disconnectedPlayer.username} has left the ${lobby.gameId ? 'game' : 'lobby'}`
               });
             }
           }, gracePeriod);
@@ -791,12 +892,26 @@ io.of('/lobby').on('connection', socket => {
           continue;
         } else {
           // No userId - remove immediately
-          console.log(`[DEBUG] Removing player ${removedPlayer.username} from lobby (no userId)`);
-          lobby.players.splice(playerIndex, 1);
+          console.log(`[DEBUG] Removing player ${disconnectedPlayer.username} from lobby (no userId)`);
+          const playerIndex = lobby.players.findIndex(p => p.username === disconnectedPlayer.username);
+          if (playerIndex !== -1) {
+            lobby.players.splice(playerIndex, 1);
+          }
+          
+          // Note: activeLobbies only tracks authenticated users, so no cleanup needed here
+          
+          // Call game's onPlayerLeave if implemented
+          if (lobby.gameId) {
+            const game = gameLoader.getGame(lobby.gameId);
+            if (game && typeof game.onPlayerLeave === 'function') {
+              const api = makeApi(io.of('/lobby'), lobby);
+              game.onPlayerLeave(lobby, api, disconnectedPlayer);
+            }
+          }
           
           // Notify game process about player disconnect
           if (gameProcessManager.hasActiveProcess(code)) {
-            gameProcessManager.playerDisconnect(code, removedPlayer.id);
+            gameProcessManager.playerDisconnect(code, disconnectedPlayer.id);
           }
           
           // Update player list for remaining players and host
@@ -804,8 +919,8 @@ io.of('/lobby').on('connection', socket => {
           
           // Notify lobby of disconnection
           io.of('/lobby').to(code).emit('playerDisconnected', {
-            player: removedPlayer,
-            message: `${removedPlayer.username} has left the lobby`,
+            player: disconnectedPlayer,
+            message: `${disconnectedPlayer.username} has left the lobby`,
             temporary: false
           });
         }
@@ -815,6 +930,14 @@ io.of('/lobby').on('connection', socket => {
       if (socket.id === lobby.host) {
         console.log(`[DEBUG] Host disconnected - closing lobby ${code}`);
         // Host disconnected - close the lobby
+        
+        // Clear active lobby tracking for all players in this lobby
+        lobby.players.forEach(player => {
+          if (player.userId) {
+            activeLobbies.delete(player.userId);
+          }
+        });
+        
         io.of('/lobby').to(code).emit('lobbyClosed');
         lobbies.delete(code);
         continue;
@@ -840,6 +963,57 @@ io.of('/lobby').on('connection', socket => {
       getAvailableGamesForLobby(lobby.playerIds).then(updatedGames => {
         io.of('/lobby').to(lobby.host).emit('gamesUpdated', updatedGames);
       });
+    }
+  });
+});
+
+// Get active lobby for authenticated user
+app.get('/api/auth/activeLobby', getCurrentUser, (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.json({
+      success: false,
+      activeLobby: null
+    });
+  }
+  
+  const userId = req.session.userId;
+  const activeLobby = activeLobbies.get(userId);
+  
+  if (!activeLobby) {
+    return res.json({
+      success: false,
+      activeLobby: null
+    });
+  }
+  
+  // Verify lobby still exists
+  const lobby = lobbies.get(activeLobby.lobbyCode);
+  if (!lobby) {
+    // Lobby no longer exists, clear tracking
+    activeLobbies.delete(userId);
+    return res.json({
+      success: false,
+      activeLobby: null
+    });
+  }
+  
+  // Verify user is still in lobby
+  const player = lobby.players.find(p => p.userId === userId);
+  if (!player) {
+    // User no longer in lobby, clear tracking
+    activeLobbies.delete(userId);
+    return res.json({
+      success: false,
+      activeLobby: null
+    });
+  }
+  
+  res.json({
+    success: true,
+    activeLobby: {
+      lobbyCode: activeLobby.lobbyCode,
+      username: activeLobby.username,
+      hasActiveGame: !!lobby.gameId
     }
   });
 });

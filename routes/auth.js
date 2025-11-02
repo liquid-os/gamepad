@@ -210,3 +210,18 @@ router.put('/profile', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+// Export a function to get active lobby for a user
+// This will be called from server.js since activeLobbies is in server scope
+module.exports.getActiveLobby = function(userId, activeLobbiesMap) {
+  const activeLobby = activeLobbiesMap.get(userId);
+  if (!activeLobby) {
+    return null;
+  }
+  
+  return {
+    lobbyCode: activeLobby.lobbyCode,
+    username: activeLobby.username,
+    joinedAt: activeLobby.joinedAt
+  };
+};

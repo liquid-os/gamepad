@@ -61,10 +61,16 @@ module.exports = {
     });
   },
 
-  onPlayerJoin(lobby, api, player) {
+  onPlayerJoin(lobby, api, player, isReconnection = false) {
+    if (isReconnection) {
+      // Reconnection detected by system - call onPlayerReconnect
+      return this.onPlayerReconnect(lobby, api, player, player.previousSocketId);
+    }
+    
     console.log('Player joined fighter game:', player.username);
     
-    lobby.state.players[player.id] = {
+    // Use username as key for player state
+    lobby.state.players[player.username] = {
       id: player.id,
       username: player.username,
       fighter: null,
@@ -84,9 +90,56 @@ module.exports = {
     });
   },
 
+  onPlayerReconnect(lobby, api, player, previousSocketId) {
+    console.log('Player reconnected to fighter game:', player.username);
+    
+    const existingPlayer = lobby.state.players[player.username];
+    if (!existingPlayer) {
+      // Player not found - treat as new join
+      return this.onPlayerJoin(lobby, api, player, false);
+    }
+    
+    // Update socket.id for message routing
+    existingPlayer.id = player.id;
+    
+    // If fighter exists, update fighter's id too
+    if (lobby.state.fighters[player.username]) {
+      lobby.state.fighters[player.username].id = player.id;
+    }
+    
+    // Send full game state to reconnected player
+    api.sendToPlayer(player.id, 'gameState', {
+      phase: lobby.state.phase,
+      availableFighters: Object.keys(FIGHTERS),
+      players: Object.values(lobby.state.players).map(p => ({
+        username: p.username,
+        fighter: p.fighter,
+        ready: p.ready
+      }))
+    });
+    
+    // If game is in progress, send current fighter positions
+    if (lobby.state.gameStarted && lobby.state.fighters[player.username]) {
+      api.sendToPlayer(player.id, 'fightStarted', {
+        fighters: Object.values(lobby.state.fighters).map(f => ({
+          id: f.id,
+          username: f.username,
+          fighterId: f.fighterId,
+          x: f.x,
+          y: f.y,
+          health: f.health,
+          maxHealth: f.maxHealth,
+          facingRight: f.facingRight
+        }))
+      });
+    }
+  },
+
   onPlayerLeave(lobby, api, player) {
-    delete lobby.state.players[player.id];
-    delete lobby.state.fighters[player.id];
+    // Use username to find and remove player
+    const username = player.username;
+    delete lobby.state.players[username];
+    delete lobby.state.fighters[username];
     
     // End game if a player leaves during match
     if (lobby.state.gameStarted) {
@@ -135,9 +188,15 @@ function handleFighterSelection(lobby, api, player, payload) {
     return;
   }
   
-  // Check if fighter already taken
+  // Check if fighter already taken (use username to get player)
+  const playerData = lobby.state.players[player.username];
+  if (!playerData) {
+    api.sendToPlayer(player.id, 'error', { message: 'Player not found in game state' });
+    return;
+  }
+  
   const takenFighters = Object.values(lobby.state.players)
-    .filter(p => p.id !== player.id)
+    .filter(p => p.username !== player.username)
     .map(p => p.fighter);
   
   console.log('Taken fighters:', takenFighters);
@@ -150,9 +209,9 @@ function handleFighterSelection(lobby, api, player, payload) {
     return;
   }
   
-  // Assign fighter
-  lobby.state.players[player.id].fighter = fighterId;
-  lobby.state.players[player.id].ready = true;
+  // Assign fighter (use username as key)
+  playerData.fighter = fighterId;
+  playerData.ready = true;
   
   console.log('Fighter assigned:', { playerId: player.id, fighterId, ready: true });
   
@@ -183,13 +242,13 @@ function startFight(lobby, api) {
   lobby.state.phase = 'fighting';
   lobby.state.gameStarted = true;
   
-  // Initialize fighter positions
+  // Initialize fighter positions (use username as key)
   const players = Object.values(lobby.state.players);
   
   players.forEach((player, index) => {
     const fighterData = FIGHTERS[player.fighter];
     
-    lobby.state.fighters[player.id] = {
+    lobby.state.fighters[player.username] = {
       id: player.id,
       username: player.username,
       fighterId: player.fighter,
@@ -310,7 +369,8 @@ function updateGame(lobby, api) {
 function handleControllerInput(lobby, api, player, payload) {
   if (!lobby.state.gameStarted) return;
   
-  const fighter = lobby.state.fighters[player.id];
+  // Use username to get fighter
+  const fighter = lobby.state.fighters[player.username];
   if (!fighter || fighter.stunned) return;
   
   const { type, direction, button } = payload;
@@ -384,7 +444,8 @@ function resolveAttack(lobby, api, fighter) {
   if (!fighter.currentAttack) return;
   
   const attack = fighter.currentAttack;
-  const opponent = Object.values(lobby.state.fighters).find(f => f.id !== fighter.id);
+  // Find opponent by username (not id)
+  const opponent = Object.values(lobby.state.fighters).find(f => f.username !== fighter.username);
   
   if (!opponent) return;
   
