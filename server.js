@@ -474,8 +474,14 @@ io.of('/lobby').on('connection', socket => {
         const game = gameLoader.getGame(lobby.gameId);
         if (game) {
           // Notify game process about player reconnection (if game process exists)
-          if (gameProcessManager.hasActiveProcess(code)) {
+          console.log(`[RECONNECT] Checking for active process for lobby ${code}, gameId: ${lobby.gameId}`);
+          const hasProcess = gameProcessManager.hasActiveProcess(code);
+          console.log(`[RECONNECT] Has active process: ${hasProcess}`);
+          if (hasProcess) {
+            console.log(`[RECONNECT] Notifying game process of reconnection for player ${player.username}`);
             gameProcessManager.playerReconnect(code, player, previousSocketId);
+          } else {
+            console.log(`[RECONNECT] No active game process for lobby ${code}, skipping game reconnection notification`);
           }
           
           // Send playerGameStarted event to reconnected player to load the game view

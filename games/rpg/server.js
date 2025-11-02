@@ -2876,6 +2876,7 @@ function handleButtonPress(lobby, api, player, buttonColor) {
 // ============= RECONNECTION HELPER FUNCTIONS =============
 
 function sendFullGameState(lobby, api, player) {
+  console.log(`[RPG] sendFullGameState called for ${player.username}, phase: ${lobby.state.phase}, socketId: ${player.id}`);
   const playerData = lobby.state.players[player.username];
   
   if (!playerData) {
@@ -2895,6 +2896,8 @@ function sendFullGameState(lobby, api, player) {
     availableClasses: Object.keys(CLASSES),
     selectedClasses: lobby.state.selectedClasses
   };
+  
+  console.log(`[RPG] Constructed payload for ${player.username}: phase=${payload.phase}, class=${playerData.class}`);
   
   // Add phase-specific data
   if (lobby.state.phase === 'combat' && lobby.state.combat) {
@@ -2922,6 +2925,10 @@ function sendFullGameState(lobby, api, player) {
       round: lobby.state.camp.round,
       maxRounds: lobby.state.camp.maxRounds
     };
+    // Include current actions if available
+    if (lobby.state.camp.currentActions && lobby.state.camp.currentActions.length > 0) {
+      payload.camp.currentActions = lobby.state.camp.currentActions;
+    }
     console.log(`[RPG] Sending camp state to ${player.username}`);
   }
   
@@ -2977,6 +2984,7 @@ function sendFullGameState(lobby, api, player) {
   }
   
   // Send the game state
+  console.log(`[RPG] Sending gameState event to socketId: ${player.id} for ${player.username}`);
   api.sendToPlayer(player.id, 'gameState', payload);
   
   // If in combat and it's this player's turn, resend action options
@@ -3069,6 +3077,7 @@ module.exports = {
 
   onPlayerReconnect(lobby, api, player, previousSocketId) {
     // Standardized reconnection handler
+    console.log(`[RPG] onPlayerReconnect called for ${player.username}, phase: ${lobby.state.phase}, socketId: ${player.id}`);
     const existingPlayer = lobby.state.players[player.username];
     
     if (!existingPlayer) {
@@ -3086,13 +3095,15 @@ module.exports = {
     
     // Send full game state to reconnected player after a delay to ensure client is ready
     // This prevents the client from showing wrong UI before gameState arrives
+    console.log(`[RPG] Scheduling sendFullGameState for ${player.username}, will be sent in 1500ms`);
     setTimeout(() => {
+      console.log(`[RPG] Sending full game state to ${player.username} now`);
       sendFullGameState(lobby, api, player);
-    }, 500);
+    }, 1500);
     
     // Notify other players of reconnection (system also sends this, but game can add game-specific info)
     api.sendToAll('playerReconnected', {
-      username: player.username,
+      player: { username: player.username, id: player.id },
       message: `${player.username} has reconnected`
     });
     
@@ -3185,7 +3196,7 @@ module.exports = {
     
     // Notify other players of reconnection
     api.sendToAll('playerReconnected', {
-      username: player.username,
+      player: { username: player.username, id: player.id },
       message: `${player.username} has reconnected`
     });
     
@@ -5875,6 +5886,9 @@ function startCampPhase(lobby, api) {
   const allActions = Object.values(CAMP_ACTIONS);
   const shuffled = allActions.sort(() => Math.random() - 0.5);
   const selectedActions = shuffled.slice(0, 3);
+  
+  // Store current actions in state for reconnection
+  lobby.state.camp.currentActions = selectedActions;
   
   // Notify all players
   api.sendToAll('campStarted', {

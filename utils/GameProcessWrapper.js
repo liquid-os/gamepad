@@ -240,12 +240,15 @@ class GameProcessWrapper {
         return;
       }
 
+      console.log(`[GameProcessWrapper:${this.processId}] Handling player reconnect for ${data.player.username}, socketId: ${data.player.id}`);
       const api = this.createApiObject();
       
       // Call onPlayerReconnect if implemented, otherwise fall back to onPlayerJoin
       if (typeof this.gameModule.onPlayerReconnect === 'function') {
+        console.log(`[GameProcessWrapper:${this.processId}] Calling game.onPlayerReconnect for ${data.player.username}`);
         this.gameModule.onPlayerReconnect(this.lobbyData, api, data.player, data.previousSocketId);
       } else if (typeof this.gameModule.onPlayerJoin === 'function') {
+        console.log(`[GameProcessWrapper:${this.processId}] Calling game.onPlayerJoin with isReconnection=true for ${data.player.username}`);
         // Fallback to onPlayerJoin for backward compatibility
         this.gameModule.onPlayerJoin(this.lobbyData, api, data.player, true);
       }

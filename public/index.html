@@ -1229,6 +1229,10 @@
           const username = currentUser ? currentUser.username : "GUEST";
           const userId = currentUser ? currentUser.id : null;
           
+          // Set lobby code and name BEFORE emitting joinLobby to ensure they're set when playerGameStarted fires
+          currentLobbyCode = code;
+          myName = username;
+          
           // Emit joinLobby - socket.io will queue it if not connected yet
           socket.emit('joinLobby', { code, username, userId }, (res) => {
             if (res?.error) {
@@ -1239,9 +1243,6 @@
               socket.disconnect();
               return;
             }
-            
-            currentLobbyCode = res.code;
-            myName = res.username;
             
             // Don't show lobby if game is in progress - playerGameStarted will handle game view
             if (!res.gameId) {

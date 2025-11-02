@@ -71,6 +71,15 @@ class GameProcessManager {
           this.handleProcessError(processInfo, error);
         });
 
+        // Forward stdout and stderr to parent console
+        childProcess.stdout.on('data', (data) => {
+          console.log(`[GameProcess:${processId}] ${data.toString().trim()}`);
+        });
+
+        childProcess.stderr.on('data', (data) => {
+          console.error(`[GameProcess:${processId}] ERROR ${data.toString().trim()}`);
+        });
+
         // Store process info
         this.activeProcesses.set(lobbyId, processInfo);
 
@@ -175,12 +184,15 @@ class GameProcessManager {
     const processInfo = this.activeProcesses.get(lobbyId);
     if (processInfo && processInfo.process && !processInfo.process.killed) {
       try {
+        console.log(`[GameProcessManager] Sending ${message.type} to process ${processInfo.processId} for lobby ${lobbyId}`);
         processInfo.process.send(message);
         return true;
       } catch (error) {
         console.error(`[GameProcessManager] Error sending message to process ${processInfo.processId}:`, error);
         return false;
       }
+    } else {
+      console.error(`[GameProcessManager] Cannot send message: process not found or killed for lobby ${lobbyId}`);
     }
     return false;
   }
@@ -219,6 +231,7 @@ class GameProcessManager {
    * Handle player reconnect in game process
    */
   playerReconnect(lobbyId, player, previousSocketId) {
+    console.log(`[GameProcessManager] Sending PLAYER_RECONNECT for lobby ${lobbyId}, player: ${player.username}, socketId: ${player.id}`);
     return this.sendToProcess(lobbyId, {
       type: 'PLAYER_RECONNECT',
       data: { player, previousSocketId }

@@ -147,8 +147,12 @@ socket.on('gameState', (data) => {
   } else if (data.phase === 'combat' || data.phase === 'camp' || data.phase === 'skill_learning' || data.phase === 'talent_learning' || data.phase === 'loot') {
     // Player is joining/reconnecting to an in-progress game
     // Hide class selection and show game UI
-    classSelectionContainer.style.display = 'none';
-    gameplayContainer.style.display = 'flex';
+    classSelection.style.display = 'none';
+    combatPhase.style.display = 'block';
+    gameEnd.style.display = 'none';
+    
+    // Show sticky tab bar for gameplay
+    showStickyTabBar();
     
     // Request phase-specific state from server
     console.log('[CLIENT] Reconnected to', data.phase, '- requesting current state');
@@ -168,44 +172,40 @@ socket.on('gameState', (data) => {
       }, 500);
     }
     
-    // If camp data is provided, request camp options
+    // If camp data is provided, show camp phase
     if (data.phase === 'camp' && data.camp) {
       console.log('[CLIENT] Reconnected to camp phase');
-      setTimeout(() => {
-        console.log('[CLIENT] Requesting camp options from server');
-        socket.emit('action', {
-          code: lobbyCode,
-          data: {
-            action: 'requestCampOptions'
-          }
-        });
-      }, 500);
+      // Store camp data in gameState
+      gameState.camp = data.camp;
+      // Map currentActions to actions if needed
+      if (data.camp.currentActions && !data.camp.actions) {
+        gameState.camp.actions = data.camp.currentActions;
+      }
+      console.log('[CLIENT] Camp actions data:', gameState.camp.actions);
+      showCampPhase();
     }
     
-    // If skill learning, request skill options
+    // If skill learning, show skill selection
     if (data.phase === 'skill_learning' && data.skillLearning) {
       console.log('[CLIENT] Reconnected to skill learning phase');
-      // Skills are already in the gameState payload, so just display them
       if (data.skillLearning.availableSkills) {
-        showSkillSelection(data.skillLearning.availableSkills);
+        showSkillLearning({ skills: data.skillLearning.availableSkills });
       }
     }
     
-    // If talent learning, request talent options
+    // If talent learning, show talent selection
     if (data.phase === 'talent_learning' && data.talentLearning) {
       console.log('[CLIENT] Reconnected to talent learning phase');
-      // Talents are already in the gameState payload, so just display them
       if (data.talentLearning.availableTalents) {
-        showTalentSelection(data.talentLearning.availableTalents);
+        showTalentLearning({ talents: data.talentLearning.availableTalents });
       }
     }
     
-    // If loot phase, request loot options
+    // If loot phase, show loot options
     if (data.phase === 'loot' && data.loot) {
       console.log('[CLIENT] Reconnected to loot phase');
-      // Loot is already in the gameState payload, display it
       if (data.loot.currentItem) {
-        showLootOptions(data.loot.currentItem, data.loot.currentItemIndex, data.loot.totalItems);
+        showLootItem(data.loot.currentItem);
       }
     }
   }
