@@ -3084,8 +3084,11 @@ module.exports = {
     existingPlayer.id = player.id;
     existingPlayer.userId = player.userId; // Update userId in case it changed
     
-    // Send full game state to reconnected player
-    sendFullGameState(lobby, api, player);
+    // Send full game state to reconnected player after a delay to ensure client is ready
+    // This prevents the client from showing wrong UI before gameState arrives
+    setTimeout(() => {
+      sendFullGameState(lobby, api, player);
+    }, 500);
     
     // Notify other players of reconnection (system also sends this, but game can add game-specific info)
     api.sendToAll('playerReconnected', {
