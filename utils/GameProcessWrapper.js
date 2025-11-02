@@ -121,6 +121,10 @@ class GameProcessWrapper {
           this.handlePlayerDisconnect(message.data);
           break;
 
+        case 'PLAYER_RECONNECT':
+          this.handlePlayerReconnect(message.data);
+          break;
+
         case 'END_GAME':
           this.handleEndGame();
           break;
@@ -222,6 +226,32 @@ class GameProcessWrapper {
 
     } catch (error) {
       console.error(`[GameProcessWrapper:${this.processId}] Error handling player disconnect:`, error);
+      this.sendToMainServer('ERROR', { error: error.message });
+    }
+  }
+
+  /**
+   * Handle player reconnect
+   */
+  handlePlayerReconnect(data) {
+    try {
+      if (!this.isReady || !this.gameModule) {
+        console.warn(`[GameProcessWrapper:${this.processId}] Not ready for player reconnect`);
+        return;
+      }
+
+      const api = this.createApiObject();
+      
+      // Call onPlayerReconnect if implemented, otherwise fall back to onPlayerJoin
+      if (typeof this.gameModule.onPlayerReconnect === 'function') {
+        this.gameModule.onPlayerReconnect(this.lobbyData, api, data.player, data.previousSocketId);
+      } else if (typeof this.gameModule.onPlayerJoin === 'function') {
+        // Fallback to onPlayerJoin for backward compatibility
+        this.gameModule.onPlayerJoin(this.lobbyData, api, data.player, true);
+      }
+
+    } catch (error) {
+      console.error(`[GameProcessWrapper:${this.processId}] Error handling player reconnect:`, error);
       this.sendToMainServer('ERROR', { error: error.message });
     }
   }

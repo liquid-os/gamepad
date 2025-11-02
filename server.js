@@ -473,18 +473,9 @@ io.of('/lobby').on('connection', socket => {
       if (lobby.gameId) {
         const game = gameLoader.getGame(lobby.gameId);
         if (game) {
-          const api = makeApi(io.of('/lobby'), lobby);
-          
-          // Call onPlayerReconnect if implemented, otherwise onPlayerJoin with isReconnection flag
-          if (typeof game.onPlayerReconnect === 'function') {
-            game.onPlayerReconnect(lobby, api, player, previousSocketId);
-          } else if (typeof game.onPlayerJoin === 'function') {
-            // Support both old signature (no isReconnection param) and new signature
-            if (game.onPlayerJoin.length === 3) {
-              game.onPlayerJoin(lobby, api, player);
-            } else {
-              game.onPlayerJoin(lobby, api, player, true);
-            }
+          // Notify game process about player reconnection (if game process exists)
+          if (gameProcessManager.hasActiveProcess(code)) {
+            gameProcessManager.playerReconnect(code, player, previousSocketId);
           }
           
           // Send playerGameStarted event to reconnected player to load the game view

@@ -216,6 +216,16 @@ class GameProcessManager {
   }
 
   /**
+   * Handle player reconnect in game process
+   */
+  playerReconnect(lobbyId, player, previousSocketId) {
+    return this.sendToProcess(lobbyId, {
+      type: 'PLAYER_RECONNECT',
+      data: { player, previousSocketId }
+    });
+  }
+
+  /**
    * Handle process exit
    */
   handleProcessExit(processInfo, code, signal) {
