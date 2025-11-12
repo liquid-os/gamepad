@@ -59,18 +59,19 @@ export default async function handler(req, res) {
 
     const games = await Game.find(query).sort(sort);
 
-    const config = require('../../../config');
-    const freeGames = config.FREE_GAMES || [];
+    const { getCoreGameIds } = require('../../../utils/coreGames');
+    const coreGameIds = await getCoreGameIds();
+    const freeGames = new Set(coreGameIds);
 
     // Process games to include ownership and affordability info
     const processedGames = games.map(game => {
-      const owned = user.ownedGames.some(owned => owned.gameId === game.gameId);
-      const free = freeGames.includes(game.gameId);
+      const owned = user.ownedGames.some(owned => owned.gameId === game.id);
+      const free = freeGames.has(game.id) || game.isCoreGame || game.price === 0;
       const accessible = owned || free;
       const canAfford = user.coins >= game.price;
 
       return {
-        id: game.gameId,
+        id: game.id,
         name: game.name,
         description: game.description,
         price: game.price,

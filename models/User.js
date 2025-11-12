@@ -171,24 +171,25 @@ userSchema.methods.updateLastLogin = function() {
 };
 
 // Grant free games to user
-userSchema.methods.grantFreeGames = function(freeGameIds) {
-  const config = require('../config');
-  const gamesToGrant = freeGameIds || config.FREE_GAMES;
+userSchema.methods.grantFreeGames = async function(freeGameIds) {
+  const { getCoreGameIds } = require('../utils/coreGames');
+  const gamesToGrant = freeGameIds || await getCoreGameIds();
+  const uniqueGameIds = Array.from(new Set((gamesToGrant || []).filter(Boolean)));
   
-  gamesToGrant.forEach(gameId => {
-    // Only add if not already owned or granted
+  uniqueGameIds.forEach(gameId => {
     const alreadyOwned = this.ownedGames.some(owned => owned.gameId === gameId);
     const alreadyGranted = this.freeGames.some(free => free.gameId === gameId);
     
     if (!alreadyOwned && !alreadyGranted) {
       this.freeGames.push({
-        gameId: gameId,
+        gameId,
         grantedAt: new Date()
       });
     }
   });
   
-  return this.save();
+  await this.save();
+  return this;
 };
 
 // Get all games user has access to (owned + free)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { getBreadcrumbStructuredData } from '../components/StructuredData';
 
 export default function Store() {
   const router = useRouter();
@@ -113,8 +114,19 @@ export default function Store() {
     );
   }
 
+  const breadcrumbs = getBreadcrumbStructuredData([
+    { name: 'Home', url: '/' },
+    { name: 'Game Store', url: '/store' },
+  ]);
+
   return (
-    <Layout title="Game Store - Party Game Hub">
+    <Layout 
+      title="Game Store"
+      description="Browse and purchase multiplayer party games on BuddyBox.tv. Discover trivia games, word games, strategy games, and more. Buy with coins or credit card."
+      url="/store"
+      keywords={['game store', 'buy games', 'party games', 'trivia games', 'word games', 'purchase games', 'online game store']}
+      structuredData={breadcrumbs}
+    >
       <div className="store-container">
         <div className="header">
           <h1>🎮 Game Store</h1>

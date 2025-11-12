@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { getGameStructuredData, getBreadcrumbStructuredData } from '../components/StructuredData';
 
 export default function Game() {
   const router = useRouter();
@@ -129,8 +130,22 @@ export default function Game() {
     'No ratings yet';
   const reviewsWithText = game.ratings.filter(r => r.review && r.review.trim()).length;
 
+  const gameStructuredData = getGameStructuredData(game);
+  const breadcrumbs = getBreadcrumbStructuredData([
+    { name: 'Home', url: '/' },
+    { name: 'Game Store', url: '/store' },
+    { name: game.name, url: `/game?id=${game.id}` },
+  ]);
+
   return (
-    <Layout title={`${game.name} - Game Details`}>
+    <Layout 
+      title={game.name}
+      description={game.description || `${game.name} - A fun multiplayer party game. ${game.minPlayers}-${game.maxPlayers} players. Play now on BuddyBox.tv!`}
+      url={`/game?id=${game.id}`}
+      image={game.logo || game.images?.[0]?.url}
+      keywords={[game.name, game.category, 'party games', 'multiplayer games', 'online games'].filter(Boolean)}
+      structuredData={[gameStructuredData, breadcrumbs]}
+    >
       <div className="game-container">
         <div className="header">
           <h1>🎮 Game Details</h1>

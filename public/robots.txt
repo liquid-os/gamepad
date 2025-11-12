@@ -1,0 +1,13 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /host.html
+Disallow: /controller.html
+Disallow: /creator.html
+Disallow: /game.html
+Disallow: /library.html
+
+# Sitemap
+Sitemap: https://buddybox.tv/sitemap.xml
+

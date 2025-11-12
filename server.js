@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const gameRoutes = require('./routes/games');
 const { getCurrentUser } = require('./middleware/auth');
 const config = require('./config');
+const { getCoreGameIds } = require('./utils/coreGames');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +61,33 @@ app.use('/games', express.static(path.join(__dirname, 'games')));
 // Serve creator dashboard
 app.get('/creator', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'creator.html'));
+});
+
+// SEO Routes - Sitemap
+app.get('/sitemap.xml', (req, res) => {
+  const siteUrl = process.env.SITE_URL || 'https://buddybox.tv';
+  
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/store.html</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+</urlset>`;
+  
+  res.setHeader('Content-Type', 'application/xml');
+  res.send(sitemap);
+});
+
+// SEO Routes - Robots.txt (already exists in public, but ensure it's served)
+app.get('/robots.txt', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
 });
 
 // Import dynamic game loader and process manager
@@ -372,10 +400,9 @@ io.of('/lobby').on('connection', socket => {
     if (userId) {
       availableGames = await getAvailableGamesForUser(userId);
     } else {
-      // For non-authenticated hosts, only show free games
-      const config = require('./config');
-      const freeGames = config.FREE_GAMES || [];
-      availableGames = freeGames.map(gameId => {
+      // For non-authenticated hosts, only show core free games
+      const coreGameIds = await getCoreGameIds();
+      availableGames = coreGameIds.map(gameId => {
         const game = gameLoader.getGame(gameId);
         return game ? game.meta : null;
       }).filter(Boolean);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { getWebsiteStructuredData, getOrganizationStructuredData } from '../components/StructuredData';
 
 export default function Home() {
   const router = useRouter();
@@ -161,8 +162,19 @@ export default function Home() {
   }
 
   if (!currentUser) {
+    const structuredData = [
+      getWebsiteStructuredData(),
+      getOrganizationStructuredData(),
+    ];
+    
     return (
-      <Layout title="Party Game Hub - Login">
+      <Layout 
+        title="Login"
+        description="Join BuddyBox.tv to play multiplayer party games with friends! Host games on your TV and join from any device."
+        url="/"
+        keywords={['party games', 'multiplayer games', 'couch co-op', 'trivia games', 'social games', 'online party games', 'login']}
+        structuredData={structuredData}
+      >
         <div className="container">
           <h1>Couchplay</h1>
 
@@ -273,8 +285,19 @@ export default function Home() {
     );
   }
 
+  const structuredData = [
+    getWebsiteStructuredData(),
+    getOrganizationStructuredData(),
+  ];
+
   return (
-    <Layout title="Party Game Hub - Home">
+    <Layout 
+      title="Home"
+      description="Welcome to BuddyBox.tv! Play multiplayer party games with friends. Host games on your TV, join from mobile, and enjoy trivia, word games, and more."
+      url="/"
+      keywords={['party games', 'multiplayer games', 'couch co-op', 'trivia games', 'social games', 'online party games']}
+      structuredData={structuredData}
+    >
       <div className="container">
         <h1>Couchplay</h1>
         

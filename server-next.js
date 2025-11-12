@@ -7,6 +7,7 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const connectDB = require('./config/database');
 const config = require('./config');
+const { getCoreGameIds } = require('./utils/coreGames');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -283,8 +284,8 @@ app.prepare().then(() => {
       if (userId) {
         availableGames = await getAvailableGamesForUser(userId);
       } else {
-        const freeGames = config.FREE_GAMES || [];
-        availableGames = freeGames.map(gameId => {
+        const coreGameIds = await getCoreGameIds();
+        availableGames = coreGameIds.map(gameId => {
           const game = gameLoader.getGame(gameId);
           return game ? game.meta : null;
         }).filter(Boolean);

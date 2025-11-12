@@ -90,7 +90,11 @@ export default function Play() {
 
   if (!currentUser) {
     return (
-      <Layout title="Loading...">
+      <Layout 
+        title="Loading..."
+        description="Joining game lobby on BuddyBox.tv"
+        noindex={true}
+      >
         <div className="container">
           <h1>Loading...</h1>
           <p>Please wait while we check your authentication status...</p>
@@ -114,7 +118,12 @@ export default function Play() {
   }
 
   return (
-    <Layout title="Player Lobby - Party Game Hub">
+    <Layout 
+      title="Player Lobby"
+      description={`Join game lobby ${lobbyCode || ''} on BuddyBox.tv. Select a game to start playing with friends!`}
+      url={`/play?code=${lobbyCode}`}
+      noindex={true}
+    >
       <div className="container" style={{ maxWidth: '600px' }}>
         <h1>Player Lobby</h1>
         

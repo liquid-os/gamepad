@@ -333,4 +333,50 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Mark a game as a core free game
+router.post('/game/:gameId/make-core', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { gameId } = req.params;
+
+    const game = await Game.findOne({ id: gameId });
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    if (game.isCoreGame) {
+      return res.json({
+        success: true,
+        message: 'Game is already a core free game'
+      });
+    }
+
+    game.isCoreGame = true;
+    game.price = 0;
+    await game.save();
+
+    const users = await User.find({
+      'ownedGames.gameId': { $ne: gameId },
+      'freeGames.gameId': { $ne: gameId }
+    }).select('ownedGames freeGames');
+
+    for (const user of users) {
+      await user.grantFreeGames([gameId]);
+    }
+
+    res.json({
+      success: true,
+      message: 'Game marked as a core free game and granted to all users'
+    });
+  } catch (error) {
+    console.error('Make core game error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to mark game as core free game'
+    });
+  }
+});
+
 module.exports = router;

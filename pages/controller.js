@@ -62,7 +62,12 @@ export default function Controller() {
   }
 
   return (
-    <Layout title="Game Controller">
+    <Layout 
+      title="Game Controller"
+      description="Use your mobile device as a game controller for BuddyBox.tv party games. Virtual joystick, buttons, and D-pad controls."
+      url="/controller"
+      noindex={true}
+    >
       <div className="controller-page">
         <h1>Game Controller</h1>
         

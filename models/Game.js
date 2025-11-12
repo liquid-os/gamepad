@@ -38,6 +38,10 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isCoreGame: {
+    type: Boolean,
+    default: false
+  },
   thumbnail: {
     type: String,
     default: '🎮'

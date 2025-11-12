@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
+  <!-- Basic Meta Tags -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Creator Dashboard - BuddyBox.tv</title>
+  <meta name="description" content="Create and manage your own party games on BuddyBox.tv. Upload games, set pricing, view analytics, and share your creations with players." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="canonical" href="https://buddybox.tv/creator.html" />
+
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#DA2359" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/favicon.ico">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Condiment&family=Jersey+10&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
@@ -427,6 +439,16 @@
     
     .btn-secondary:hover {
       background: #5a6268;
+    }
+
+    .btn-warning {
+      background: #ffc107;
+      color: #212529;
+    }
+    
+    .btn-warning:hover {
+      background: #e0a800;
+      color: #212529;
     }
     
     .loading {
@@ -1107,6 +1129,8 @@
     function renderGameCard(game) {
       const statusClass = `status-${game.status}`;
       const statusText = game.status.charAt(0).toUpperCase() + game.status.slice(1);
+      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isCoreGame = Boolean(game.isCoreGame) || game.price === 0;
       
       // Get logo or fallback to default
       const logoSrc = game.logo || '/game-logos/default-logo.png';
@@ -1121,6 +1145,8 @@
       }
       
       const usdPrice = game.price ? `$${(game.price / 100).toFixed(2)}` : 'Free';
+      const coreBadge = isCoreGame ? '<span class="badge badge-success">Core Free Game</span>' : '';
+      const makeFreeButton = isAdmin && !isCoreGame ? `<button class="btn btn-warning" onclick="makeGameFree('${game.id}')">Make Free</button>` : '';
       
       return `
         <div class="game-card">
@@ -1138,6 +1164,7 @@
               <span>${game.minPlayers}-${game.maxPlayers} players</span>
               <span>${game.downloadCount || 0} downloads</span>
             </div>
+            ${coreBadge ? `<div style="margin: 10px 0;">${coreBadge}</div>` : ''}
             ${updateStatus ? `<div style="margin: 10px 0;">${updateStatus}</div>` : ''}
             <div class="game-actions">
               <button class="btn btn-primary" onclick="openUpdateModal('${game.id}')">Update Game</button>
@@ -1145,6 +1172,7 @@
                 `<button class="btn btn-success" onclick="submitForApproval('${game.id}')">Submit for Approval</button>` : ''}
               <button class="btn btn-secondary" onclick="editGame('${game.id}')">Edit</button>
               <button class="btn btn-danger" onclick="deleteGame('${game.id}')">Delete</button>
+              ${makeFreeButton}
             </div>
           </div>
         </div>
@@ -1460,6 +1488,30 @@
       } catch (error) {
         console.error('Delete error:', error);
         showError('Failed to delete game');
+      }
+    }
+
+    async function makeGameFree(gameId) {
+      if (!confirm('Make this game a core free title for all users? This will set the price to free and grant access to everyone.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/game/${gameId}/make-core`, {
+          method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showSuccess(result.message || 'Game marked as a core free game.');
+          await loadCreatorData();
+        } else {
+          showError(result.message || 'Failed to mark game as a core free game.');
+        }
+      } catch (error) {
+        console.error('Make game free error:', error);
+        showError('Failed to mark game as a core free game.');
       }
     }
 

@@ -1,13 +1,26 @@
-import Head from 'next/head';
+import SEO from './SEO';
 
-export default function Layout({ children, title = 'Party Game Hub' }) {
+export default function Layout({ 
+  children, 
+  title, 
+  description,
+  url,
+  image,
+  keywords,
+  structuredData,
+  noindex = false,
+}) {
   return (
     <>
-      <Head>
-        <title>{title}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta charSet="UTF-8" />
-      </Head>
+      <SEO
+        title={title}
+        description={description}
+        url={url}
+        image={image}
+        keywords={keywords}
+        structuredData={structuredData}
+        noindex={noindex}
+      />
       <main>{children}</main>
     </>
   );

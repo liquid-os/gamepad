@@ -56,7 +56,12 @@ export default function Host() {
   }
 
   return (
-    <Layout title="Host Screen - Party Game Hub">
+    <Layout 
+      title="Host Game"
+      description="Host a multiplayer party game on your TV screen. Share your lobby code with friends to join the game from their devices."
+      url="/host"
+      noindex={true}
+    >
       <div className="host-container">
         {!gameStarted ? (
           <div>

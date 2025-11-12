@@ -37,7 +37,12 @@ export default function Creator() {
   }
 
   return (
-    <Layout title="Creator Dashboard - Party Game Hub">
+    <Layout 
+      title="Creator Dashboard"
+      description="Create and manage your own party games on BuddyBox.tv. Upload games, set pricing, view analytics, and share your creations with players."
+      url="/creator"
+      noindex={true}
+    >
       <div className="creator-container">
         <div className="header">
           <h1>🎮 Creator Dashboard</h1>
