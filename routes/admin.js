@@ -333,6 +333,38 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Delete all games
+router.delete('/games/all', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const games = await Game.find({});
+
+    for (const game of games) {
+      try {
+        // Remove any pending update folders
+        if (game.pendingUpdateFolderPath && fs.existsSync(game.pendingUpdateFolderPath)) {
+          fs.rmSync(game.pendingUpdateFolderPath, { recursive: true, force: true });
+        }
+      } catch (error) {
+        console.error(`[Admin] Error removing pending update folder for ${game.id}:`, error);
+      }
+    }
+
+    await Game.deleteMany({});
+    gameLoader.games.clear();
+
+    return res.json({
+      success: true,
+      message: 'All games deleted successfully'
+    });
+  } catch (error) {
+    console.error('[Admin] Failed to delete all games:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete games'
+    });
+  }
+});
+
 // Mark a game as a core free game
 router.post('/game/:gameId/make-core', requireAuth, requireAdmin, async (req, res) => {
   try {

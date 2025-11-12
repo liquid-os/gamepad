@@ -701,6 +701,46 @@ router.post('/game/:gameId/update', requireAuth, requireCreator, upload.single('
       });
     }
     
+    // Admin-authored updates are auto-approved and deployed immediately
+    if (req.user.role === 'admin') {
+      try {
+        const gamesDir = path.join(__dirname, '..', 'games');
+        const gameDir = path.join(gamesDir, gameId);
+        const adminUpdateDir = path.join(gamesDir, `${gameId}_update`);
+        
+        if (fs.existsSync(gameDir)) {
+          fs.rmSync(gameDir, { recursive: true, force: true });
+        }
+        
+        if (fs.existsSync(adminUpdateDir)) {
+          fs.renameSync(adminUpdateDir, gameDir);
+        }
+        
+        await gameLoader.reloadGame(gameId);
+        
+        game.hasPendingUpdate = false;
+        game.pendingUpdateFolderPath = null;
+        game.pendingUpdateStatus = 'approved';
+        game.submittedForApproval = false;
+        game.folderPath = gameDir;
+        game.deployedAt = new Date();
+        await game.save();
+        
+        return res.json({
+          success: true,
+          message: 'Game update uploaded and published immediately (admin auto-approve).',
+          warnings: validation.warnings.length > 0 ? validation.warnings : undefined
+        });
+      } catch (error) {
+        console.error('Admin auto-approve update error:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to auto-approve admin update',
+          errors: [error.message]
+        });
+      }
+    }
+    
     // Update game record with pending update info
     game.hasPendingUpdate = true;
     game.pendingUpdateFolderPath = updateDir;
