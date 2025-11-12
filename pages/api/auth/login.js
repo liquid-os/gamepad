@@ -39,7 +39,12 @@ export default async function handler(req, res) {
         email: user.email,
         coins: user.coins,
         ownedGames: user.ownedGames,
-        isAdmin: user.isAdmin
+        role: user.role,
+        isAdmin: user.role === 'admin',
+        creatorProfile: user.creatorProfile,
+        creatorStats: user.creatorStats,
+        creatorSince: user.creatorSince,
+        freeGames: user.freeGames
       }
     });
   } catch (error) {

@@ -53,7 +53,15 @@ router.post('/register', requireGuest, async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         gamesPlayed: user.gamesPlayed,
-        totalScore: user.totalScore
+        totalScore: user.totalScore,
+        role: user.role,
+        isAdmin: user.role === 'admin',
+        creatorProfile: user.creatorProfile,
+        creatorStats: user.creatorStats,
+        creatorSince: user.creatorSince,
+        coins: user.coins,
+        ownedGames: user.ownedGames,
+        freeGames: user.freeGames
       }
     });
 
@@ -114,7 +122,15 @@ router.post('/login', requireGuest, async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         gamesPlayed: user.gamesPlayed,
-        totalScore: user.totalScore
+        totalScore: user.totalScore,
+        role: user.role,
+        isAdmin: user.role === 'admin',
+        creatorProfile: user.creatorProfile,
+        creatorStats: user.creatorStats,
+        creatorSince: user.creatorSince,
+        coins: user.coins,
+        ownedGames: user.ownedGames,
+        freeGames: user.freeGames
       }
     });
 
@@ -158,7 +174,15 @@ router.get('/me', requireAuth, async (req, res) => {
         gamesPlayed: user.gamesPlayed,
         totalScore: user.totalScore,
         createdAt: user.createdAt,
-        lastLogin: user.lastLogin
+        lastLogin: user.lastLogin,
+        role: user.role,
+        isAdmin: user.role === 'admin',
+        creatorProfile: user.creatorProfile,
+        creatorStats: user.creatorStats,
+        creatorSince: user.creatorSince,
+        coins: user.coins,
+        ownedGames: user.ownedGames,
+        freeGames: user.freeGames
       }
     });
   } catch (error) {
