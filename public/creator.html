@@ -1059,8 +1059,22 @@
         
         if (data.success) {
           currentUser = data.user;
-          
-          if (currentUser.role === 'creator' || currentUser.role === 'admin') {
+
+          if (!currentUser.role) {
+            if (currentUser.isAdmin) {
+              currentUser.role = 'admin';
+            } else if (currentUser.creatorProfile) {
+              currentUser.role = 'creator';
+            } else {
+              currentUser.role = 'player';
+            }
+          }
+
+          if (
+            currentUser.role === 'creator' ||
+            currentUser.role === 'admin' ||
+            currentUser.isAdmin
+          ) {
             loadCreatorData();
           } else {
             showBecomeCreatorForm();
@@ -1129,7 +1143,7 @@
     function renderGameCard(game) {
       const statusClass = `status-${game.status}`;
       const statusText = game.status.charAt(0).toUpperCase() + game.status.slice(1);
-      const isAdmin = currentUser && currentUser.role === 'admin';
+      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.isAdmin);
       const isCoreGame = Boolean(game.isCoreGame) || game.price === 0;
       
       // Get logo or fallback to default
