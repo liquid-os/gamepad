@@ -8,6 +8,7 @@ const User = require('../models/User');
 const Game = require('../models/Game');
 const { requireAuth } = require('../middleware/auth');
 const gameLoader = require('../utils/DynamicGameLoader');
+const config = require('../config');
 const router = express.Router();
 
 // File upload configuration for game ZIP files
@@ -218,10 +219,13 @@ async function extractGameFiles(buffer) {
 // Deploy game files to file system
 async function deployGameToFileSystem(gameId, buffer) {
   try {
-    const gamesDir = path.join(__dirname, '..', 'games');
+    const gamesDir = config.GAMES_DIR;
     const gameDir = path.join(gamesDir, gameId);
     
     // Create game directory if it doesn't exist
+    if (!fs.existsSync(gamesDir)) {
+      fs.mkdirSync(gamesDir, { recursive: true });
+    }
     if (!fs.existsSync(gameDir)) {
       fs.mkdirSync(gameDir, { recursive: true });
     }
@@ -270,7 +274,7 @@ async function deployGameToFileSystem(gameId, buffer) {
 // Deploy update files to {gameId}_update directory
 async function deployUpdateToFileSystem(gameId, buffer) {
   try {
-    const gamesDir = path.join(__dirname, '..', 'games');
+    const gamesDir = config.GAMES_DIR;
     const updateDir = path.join(gamesDir, `${gameId}_update`);
     
     // Remove existing update directory if it exists
@@ -707,9 +711,13 @@ router.post('/game/:gameId/update', requireAuth, requireCreator, upload.single('
     // Admin-authored updates are auto-approved and deployed immediately
     if (req.user.role === 'admin') {
       try {
-        const gamesDir = path.join(__dirname, '..', 'games');
+        const gamesDir = config.GAMES_DIR;
         const gameDir = path.join(gamesDir, gameId);
         const adminUpdateDir = path.join(gamesDir, `${gameId}_update`);
+        
+        if (!fs.existsSync(gamesDir)) {
+          fs.mkdirSync(gamesDir, { recursive: true });
+        }
         
         if (fs.existsSync(gameDir)) {
           fs.rmSync(gameDir, { recursive: true, force: true });
@@ -853,7 +861,7 @@ router.delete('/game/:gameId', requireAuth, requireCreator, async (req, res) => 
     }
     
     // Also try removing by gameId pattern in case folderPath wasn't set correctly
-    const gamesDir = path.join(__dirname, '..', 'games');
+    const gamesDir = config.GAMES_DIR;
     const gameDir = path.join(gamesDir, gameId);
     const updateDir = path.join(gamesDir, `${gameId}_update`);
     

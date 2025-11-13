@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const path = require('path');
+const config = require('../config');
 
 const gameSchema = new mongoose.Schema({
   id: {
@@ -339,14 +341,10 @@ gameSchema.methods.incrementDownloads = function() {
 
 // Method to check if game is deployed to file system
 gameSchema.methods.isDeployed = function() {
-  const path = require('path');
   const fs = require('fs');
   
-  if (!this.folderPath) {
-    return false;
-  }
-  
-  const fullPath = path.join(__dirname, '..', 'games', this.id);
+  const basePath = this.folderPath || path.join(config.GAMES_DIR, this.id);
+  const fullPath = basePath;
   const serverPath = path.join(fullPath, 'server.js');
   
   return fs.existsSync(serverPath);
@@ -354,8 +352,7 @@ gameSchema.methods.isDeployed = function() {
 
 // Method to get deployment path
 gameSchema.methods.getDeploymentPath = function() {
-  const path = require('path');
-  return path.join(__dirname, '..', 'games', this.id);
+  return path.join(config.GAMES_DIR, this.id);
 };
 
 // Indexes for better performance

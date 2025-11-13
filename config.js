@@ -1,3 +1,5 @@
+const path = require('path');
+
 // Copy this file to config.js and update with your MongoDB connection string
 module.exports = {
   // MongoDB Connection String
@@ -16,5 +18,8 @@ module.exports = {
   // Stripe Configuration - Replace with your actual Stripe test keys
   STRIPE_SECRET_KEY: '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',
   STRIPE_PUBLISHABLE_KEY: 'pk_live_51SE3RsAmeE6qn0TrpBdG5twAazBGVz7lciz4mDrIS9JEysPLH9KzsHQ79Y2NAfeBLiCmZZ3QlUQRVvMN1BXWNCPJ00uP4XcBXI', // Get from Stripe Dashboard  
-  STRIPE_WEBHOOK_SECRET: 'whsec_tpUZe4ctOvOAnKMN6T5y1br30YmURLxN'
+  STRIPE_WEBHOOK_SECRET: 'whsec_tpUZe4ctOvOAnKMN6T5y1br30YmURLxN',
+
+  // Filesystem path for deployed games (supports Render persistent disks)
+  GAMES_DIR: process.env.GAMES_DIR || path.join(__dirname, 'games')
 };

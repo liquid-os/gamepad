@@ -1,6 +1,7 @@
 const Game = require('../models/Game');
 const fs = require('fs');
 const path = require('path');
+const config = require('../config');
 
 class DynamicGameLoader {
   constructor() {
@@ -91,7 +92,7 @@ class DynamicGameLoader {
       // Game will be executed in separate process
       isDeployed: () => {
         if (!gameData.folderPath) return false;
-        const serverPath = path.join(__dirname, '..', 'games', gameData.id, 'server.js');
+        const serverPath = path.join(config.GAMES_DIR, gameData.id, 'server.js');
         return fs.existsSync(serverPath);
       }
     };

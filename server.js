@@ -56,7 +56,10 @@ app.use('/api/admin', require('./routes/admin'));
 
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/games', express.static(path.join(__dirname, 'games')));
+if (!fs.existsSync(config.GAMES_DIR)) {
+  fs.mkdirSync(config.GAMES_DIR, { recursive: true });
+}
+app.use('/games', express.static(config.GAMES_DIR));
 
 // Serve creator dashboard
 app.get('/creator', (req, res) => {

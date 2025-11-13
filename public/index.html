@@ -333,6 +333,27 @@
       border-radius: 10px;
     }
 
+    .loading-spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .btn-flexbox {
       display: flex;
       gap: 10px;
@@ -689,6 +710,39 @@
       cursor: pointer;
       border-radius: 5px;
     }
+    
+    #registerForm {
+      color: white;
+      font-family: "Jersey 10", sans-serif;
+    }
+
+    #registerForm h2,
+    #registerForm h3,
+    #registerForm p {
+      color: white;
+      font-family: "Jersey 10", sans-serif;
+    }
+
+    #registerForm input {
+      color: #1e1e1f;
+    }
+
+    #registerForm ::placeholder {
+      color: #999;
+    }
+
+    #registerBtn {
+      width: 100%;
+    }
+
+    #authView a {
+      color: #ff6b81;
+    }
+
+    #authView a:hover {
+      color: #ff9aa5;
+    }
+
 
     .gallery-nav:hover {
       background: rgba(255,255,255,0.3);
@@ -732,7 +786,7 @@
       </div>
       
       <div id="registerForm" style="display: none;">
-        <h2>Register</h2>
+        <h2 class="pixel-text" style="color: white; font-size: 2.5em;">Register</h2>
         <div class="input-group">
           <input id="registerUsername" type="text" placeholder="Username" />
         </div>
@@ -742,13 +796,13 @@
         <div class="input-group">
           <input id="registerPassword" type="password" placeholder="Password" />
         </div>
-        <button id="registerBtn">Register</button>
-        <p>Already have an account? <a href="#" id="showLogin">Login here</a></p>
+        <button id="registerBtn" class="btn-primary">Register</button>
+        <p class="pixel-text" style="color: white; font-size: 1.2em;">Already have an account? <a href="#" id="showLogin">Login here</a></p>
         
         <div style="margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #28a745;">
-          <h3>Quick Start</h3>
-          <p>Want to start playing immediately?</p>
-          <button id="quickHostBtn2" style="background: #28a745; width: 100%; margin-top: 10px;">Host Lobby</button>
+          <h3 class="pixel-text" style="color: #1e1f20;">Quick Start</h3>
+          <p class="pixel-text" style="color: #1e1f20; font-size: 1.1em;">Want to start playing immediately?</p>
+          <button id="quickHostBtn2" class="btn-primary" style="width: 100%; margin-top: 10px;">Host Lobby</button>
         </div>
       </div>
     </div>
@@ -1382,10 +1436,16 @@
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
 
+      const loginBtn = document.getElementById('loginBtn');
+      const originalText = loginBtn.textContent;
+
       if (!email || !password) {
         alert('Please fill in all fields');
         return;
       }
+
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<span class="loading-spinner"></span> Logging in...';
 
       try {
         const response = await fetch('/api/auth/login', {
@@ -1407,6 +1467,9 @@
       } catch (error) {
         console.error('Login error:', error);
         alert('Login failed');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = originalText;
       }
     }
 
@@ -1415,6 +1478,9 @@
       const username = document.getElementById('registerUsername').value;
       const email = document.getElementById('registerEmail').value;
       const password = document.getElementById('registerPassword').value;
+
+      const registerBtn = document.getElementById('registerBtn');
+      const originalText = registerBtn.textContent;
 
       if (!username || !email || !password) {
         alert('Please fill in all fields');
@@ -1425,6 +1491,9 @@
         alert('Password must be at least 6 characters');
         return;
       }
+
+      registerBtn.disabled = true;
+      registerBtn.innerHTML = '<span class="loading-spinner"></span> Registering...';
 
       try {
         const response = await fetch('/api/auth/register', {
@@ -1446,6 +1515,9 @@
       } catch (error) {
         console.error('Registration error:', error);
         alert('Registration failed');
+      } finally {
+        registerBtn.disabled = false;
+        registerBtn.textContent = originalText;
       }
     }
 

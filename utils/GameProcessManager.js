@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const config = require('../config');
 
 class GameProcessManager {
   constructor() {
@@ -22,7 +23,7 @@ class GameProcessManager {
     return new Promise((resolve, reject) => {
       try {
         // Check if game folder exists
-        const gamePath = path.join(__dirname, '..', 'games', gameId);
+        const gamePath = path.join(config.GAMES_DIR, gameId);
         const serverPath = path.join(gamePath, 'server.js');
         
         if (!fs.existsSync(serverPath)) {

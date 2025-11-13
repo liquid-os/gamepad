@@ -8,6 +8,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const config = require('../config');
 
 class GameProcessWrapper {
   constructor() {
@@ -68,7 +69,7 @@ class GameProcessWrapper {
    */
   loadGameModule() {
     try {
-      const gamePath = path.join(__dirname, '..', 'games', this.gameId);
+      const gamePath = path.join(config.GAMES_DIR, this.gameId);
       const serverPath = path.join(gamePath, 'server.js');
 
       if (!fs.existsSync(serverPath)) {

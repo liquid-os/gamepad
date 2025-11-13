@@ -3,6 +3,7 @@ const Game = require('../models/Game');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
 const gameLoader = require('../utils/DynamicGameLoader');
+const config = require('../config');
 const router = express.Router();
 
 // Middleware to check admin permissions
@@ -81,7 +82,7 @@ router.post('/approve-update/:gameId', requireAuth, requireAdmin, async (req, re
       });
     }
     
-    const gamesDir = path.join(__dirname, '..', 'games');
+    const gamesDir = config.GAMES_DIR;
     const updateDir = path.join(gamesDir, `${gameId}_update`);
     const gameDir = path.join(gamesDir, gameId);
     
@@ -149,7 +150,7 @@ router.post('/reject-update/:gameId', requireAuth, requireAdmin, async (req, res
     }
     
     // Remove update directory
-    const gamesDir = path.join(__dirname, '..', 'games');
+    const gamesDir = config.GAMES_DIR;
     const updateDir = path.join(gamesDir, `${gameId}_update`);
     if (fs.existsSync(updateDir)) {
       fs.rmSync(updateDir, { recursive: true, force: true });

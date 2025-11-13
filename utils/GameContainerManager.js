@@ -2,6 +2,7 @@ const Docker = require('dockerode');
 const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
+const config = require('../config');
 
 class GameContainerManager {
   constructor() {
@@ -278,8 +279,8 @@ class GameContainerManager {
       try {
         // Determine game path
         const gamePath = testGamePath 
-          ? path.join(__dirname, '..', 'games', testGamePath)
-          : path.join(__dirname, '..', 'games', gameId);
+          ? path.join(config.GAMES_DIR, testGamePath)
+          : path.join(config.GAMES_DIR, gameId);
 
         const serverPath = path.join(gamePath, 'server.js');
         
