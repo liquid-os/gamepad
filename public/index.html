@@ -343,6 +343,28 @@
       padding-bottom: 10px;
       background: white;
       border-radius: 10px;
+      flex-wrap: wrap;
+    }
+
+    #spectateLobby {
+      background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);
+    }
+
+    #spectateLobby:hover {
+      background: linear-gradient(135deg, #7d8793 0%, #495057 100%);
+      color: #fff;
+    }
+
+    @media (max-width: 600px) {
+      .btn-flexbox {
+        padding-left: 15px;
+        padding-right: 15px;
+      }
+
+      #spectateLobby {
+        flex: 0 0 100%;
+        width: 100%;
+      }
     }
 
     .btn-stack {

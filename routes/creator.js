@@ -560,7 +560,10 @@ router.post('/upload-game', requireAuth, requireCreator, (req, res, next) => {
     // No need to validate again since we're not storing code in DB
     await game.save();
     
-    // Game is now deployed and available immediately (no need to reload)
+    if (req.user.role === 'admin') {
+      await gameLoader.reloadGame(gameId);
+    }
+    
     console.log(`[Creator] Game ${gameId} deployed and available for use`);
     
     // Update creator stats

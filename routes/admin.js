@@ -388,6 +388,7 @@ router.post('/game/:gameId/make-core', requireAuth, requireAdmin, async (req, re
     game.isCoreGame = true;
     game.price = 0;
     await game.save();
+    await gameLoader.reloadGame(gameId);
 
     const users = await User.find({
       'ownedGames.gameId': { $ne: gameId },
