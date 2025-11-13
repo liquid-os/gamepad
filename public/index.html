@@ -205,31 +205,119 @@
       transform: translateY(-2px);
     }
     
+    .game-selection-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 15px 0 20px 0;
+      align-items: center;
+    }
+
+    .game-search-input,
+    .game-category-select {
+      flex: 1 1 220px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 2px solid #e1e5e9;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 1.05em;
+      font-family: "Jersey 10", sans-serif;
+      color: #1e1f20;
+      letter-spacing: 0.5px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .game-search-input:focus,
+    .game-category-select:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+      outline: none;
+    }
+
+    .game-selection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 25px;
+      margin-bottom: 10px;
+      color: #324A5F;
+    }
     .game-option { 
       cursor: pointer; 
-      padding: 20px; 
-      border: 2px solid #e1e5e9; 
-      margin: 10px 0; 
-      border-radius: 10px;
-      text-align: center;
-      font-weight: 600;
-      transition: all 0.3s;
+      padding: 22px 26px; 
+      border: 1px solid rgba(102, 126, 234, 0.15); 
+      margin: 12px 0; 
+      border-radius: 18px;
+      text-align: left;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s, background 0.3s;
       position: relative;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: #1e1f20;
     }
     .game-option:hover { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      transform: translateY(-2px);
+      background: #ffffff;
+      border-color: rgba(102, 126, 234, 0.4);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(23, 43, 77, 0.12);
     }
-    .game-info {
-      font-size: 0.9em;
-      opacity: 0.8;
-      margin-top: 5px;
+    .game-option.disabled {
+      pointer-events: none;
+      opacity: 0.6;
+      filter: grayscale(15%);
     }
-    .game-players {
-      font-size: 0.8em;
-      color: #666;
-      margin-top: 5px;
+    .game-option .game-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: "Jersey 10", sans-serif;
+      font-size: 1.8em;
+      letter-spacing: 1px;
+    }
+    .game-option .game-description {
+      font-size: 1.05em;
+      line-height: 1.5;
+      color: #4a4a4a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .game-option .game-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.95em;
+      color: #445064;
+      font-family: "Jersey 10", sans-serif;
+      letter-spacing: 0.5px;
+    }
+    .game-option .game-category {
+      background: rgba(102, 126, 234, 0.15);
+      color: #324A5F;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .game-option .players-tag {
+      background: rgba(237, 77, 80, 0.15);
+      color: #ED4D50;
+      padding: 4px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .no-game-results {
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      font-family: "Jersey 10", sans-serif;
+      font-size: 1.2em;
+      color: #324A5F;
+      border: 1px dashed rgba(102, 126, 234, 0.35);
     }
     
     #playerList {
@@ -871,12 +959,23 @@
   </div>
 
   <div id="lobbyView">
-      <div class="lobby-code">Lobby Code: <span id="codeDisplay"></span></div>
+      <div class="lobby-code pixel-text">Lobby Code: <span id="codeDisplay"></span></div>
       
-      <h3>Players in Lobby:</h3>
+      <h3 class="pixel-text" style="color: #324A5F;">Players in Lobby:</h3>
     <ul id="playerList"></ul>
       
-      <h3>Select a Game:</h3>
+      <div class="game-selection-header">
+        <h3 class="pixel-text">Select a Game:</h3>
+      </div>
+      <div id="gameSelectionTools" class="game-selection-tools">
+        <input type="search" id="gameSearchInput" class="game-search-input" placeholder="Search games by name or description..." autocomplete="off" />
+        <select id="gameCategoryFilter" class="game-category-select">
+          <option value="all">All Categories</option>
+        </select>
+      </div>
+      <div id="noGameResults" class="no-game-results" style="display: none;">
+        No games match your filters yet—try a different search or category.
+      </div>
     <div id="gameList"></div>
       
       <button id="exitLobby" style="background: #dc3545; margin-top: 20px;">🚪 Leave Lobby</button>
@@ -1831,42 +1930,204 @@
       }
     };
 
+    let gameAlreadySelected = false;
+    let allLobbyGames = [];
+    let filteredLobbyGames = [];
+    let gameFiltersInitialized = false;
+    let currentGameSearch = '';
+    let currentGameCategory = 'all';
+
     function showLobby(code, games) {
       homeView.style.display = 'none';
       lobbyView.style.display = 'block';
       codeDisplay.textContent = code;
-      renderGameList(games);
+
+      gameAlreadySelected = false;
+      resetGameSelectionControls();
+
+      allLobbyGames = Array.isArray(games) ? games : [];
+      populateCategoryFilter(allLobbyGames);
+      initializeGameFilters();
+      applyGameFilters();
     }
 
-    let gameAlreadySelected = false;
+    function resetGameSelectionControls() {
+      const searchInput = document.getElementById('gameSearchInput');
+      const categorySelect = document.getElementById('gameCategoryFilter');
+
+      currentGameSearch = '';
+      currentGameCategory = 'all';
+
+      if (searchInput) {
+        searchInput.disabled = false;
+        searchInput.value = '';
+      }
+
+      if (categorySelect) {
+        categorySelect.disabled = false;
+        categorySelect.value = 'all';
+      }
+
+      const noGameResults = document.getElementById('noGameResults');
+      if (noGameResults) {
+        noGameResults.style.display = 'none';
+      }
+    }
+
+    function initializeGameFilters() {
+      if (gameFiltersInitialized) return;
+
+      const searchInput = document.getElementById('gameSearchInput');
+      const categorySelect = document.getElementById('gameCategoryFilter');
+
+      if (!searchInput || !categorySelect) return;
+
+      searchInput.addEventListener('input', (event) => {
+        currentGameSearch = event.target.value || '';
+        applyGameFilters();
+      });
+
+      categorySelect.addEventListener('change', (event) => {
+        currentGameCategory = event.target.value || 'all';
+        applyGameFilters();
+      });
+
+      gameFiltersInitialized = true;
+    }
+
+    function populateCategoryFilter(games) {
+      const categorySelect = document.getElementById('gameCategoryFilter');
+      if (!categorySelect) return;
+
+      const categories = Array.from(new Set(
+        (games || [])
+          .map(game => (game.category || '').trim())
+          .filter(Boolean)
+      )).sort((a, b) => a.localeCompare(b));
+
+      categorySelect.innerHTML = '';
+
+      const allOption = document.createElement('option');
+      allOption.value = 'all';
+      allOption.textContent = 'All Categories';
+      categorySelect.appendChild(allOption);
+
+      categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+      });
+
+      categorySelect.value = 'all';
+      currentGameCategory = 'all';
+    }
+
+    function applyGameFilters() {
+      const normalizedSearch = currentGameSearch.trim().toLowerCase();
+      const normalizedCategory = (currentGameCategory || 'all').toLowerCase();
+
+      let games = [...allLobbyGames];
+
+      if (normalizedCategory && normalizedCategory !== 'all') {
+        games = games.filter(game => (game.category || '').toLowerCase() === normalizedCategory);
+      }
+
+      if (normalizedSearch) {
+        games = games.filter(game => {
+          const name = (game.name || '').toLowerCase();
+          const description = (game.description || '').toLowerCase();
+          return name.includes(normalizedSearch) || description.includes(normalizedSearch);
+        });
+      }
+
+      filteredLobbyGames = games;
+      renderGameList(filteredLobbyGames);
+    }
+
     function disableAllGameOptions() {
       const options = document.querySelectorAll('.game-option');
       options.forEach(opt => {
-        opt.style.pointerEvents = 'none';
-        opt.style.opacity = '0.6';
+        opt.classList.add('disabled');
       });
+
+      const searchInput = document.getElementById('gameSearchInput');
+      const categorySelect = document.getElementById('gameCategoryFilter');
+
+      if (searchInput) searchInput.disabled = true;
+      if (categorySelect) categorySelect.disabled = true;
     }
 
     function renderGameList(games) {
+      const noGameResults = document.getElementById('noGameResults');
+
       gameList.innerHTML = '';
+
+      if (!games || games.length === 0) {
+        if (noGameResults) {
+          noGameResults.style.display = 'block';
+        }
+        return;
+      }
+
+      if (noGameResults) {
+        noGameResults.style.display = 'none';
+      }
+
       games.forEach(game => {
-        const div = document.createElement('div');
-        div.className = 'game-option';
-        
-        const gameHtml = `
-          <div style="font-size: 1.2em; font-weight: bold;">${game.name}</div>
-          <div class="game-info">${game.description || 'Fun party game!'}</div>
-          <div class="game-players">👥 ${game.minPlayers}-${game.maxPlayers} players</div>
-        `;
-        
-        div.innerHTML = gameHtml;
-        div.onclick = () => {
+        const card = document.createElement('div');
+        card.className = 'game-option';
+        if (gameAlreadySelected) {
+          card.classList.add('disabled');
+        }
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'game-title pixel-text';
+        titleRow.textContent = game.name || 'Untitled Game';
+
+        const metaRow = document.createElement('div');
+        metaRow.className = 'game-meta pixel-text';
+
+        if (game.category) {
+          const categoryTag = document.createElement('span');
+          categoryTag.className = 'game-category';
+          categoryTag.textContent = game.category;
+          metaRow.appendChild(categoryTag);
+        }
+
+        const minPlayersParsed = parseInt(game.minPlayers, 10);
+        const maxPlayersParsed = parseInt(game.maxPlayers, 10);
+        const hasMinPlayers = !Number.isNaN(minPlayersParsed);
+        const hasMaxPlayers = !Number.isNaN(maxPlayersParsed);
+
+        if (hasMinPlayers || hasMaxPlayers) {
+          const playersTag = document.createElement('span');
+          playersTag.className = 'players-tag';
+          const playerRange = hasMinPlayers && hasMaxPlayers
+            ? `${minPlayersParsed}-${maxPlayersParsed}`
+            : (hasMaxPlayers ? maxPlayersParsed : minPlayersParsed);
+          playersTag.textContent = `👥 ${playerRange} players`;
+          metaRow.appendChild(playersTag);
+        }
+
+        const descriptionEl = document.createElement('div');
+        descriptionEl.className = 'game-description';
+        descriptionEl.textContent = game.description || 'Fun party game!';
+
+        card.appendChild(titleRow);
+        card.appendChild(descriptionEl);
+        if (metaRow.children.length > 0) {
+          card.appendChild(metaRow);
+        }
+
+        card.addEventListener('click', () => {
           if (gameAlreadySelected) return;
           gameAlreadySelected = true;
           disableAllGameOptions();
           socket.emit('selectGame', { code: currentLobbyCode, gameId: game.id });
-        };
-        gameList.appendChild(div);
+        });
+
+        gameList.appendChild(card);
       });
     }
   </script>
