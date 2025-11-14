@@ -55,11 +55,28 @@ app.use('/api/creator', require('./routes/creator'));
 app.use('/api/admin', require('./routes/admin'));
 
 // Static files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1h', // Cache public assets for 1 hour
+  etag: true,
+  lastModified: true
+}));
+
 if (!fs.existsSync(config.GAMES_DIR)) {
   fs.mkdirSync(config.GAMES_DIR, { recursive: true });
 }
-app.use('/games', express.static(config.GAMES_DIR));
+
+// Serve game files with aggressive caching to reduce Render persistent disk reads
+// This is critical for performance since Render persistent disks are network-attached
+app.use('/games', express.static(config.GAMES_DIR, {
+  maxAge: '7d', // Cache game assets for 7 days (games don't change often)
+  etag: true,
+  lastModified: true,
+  immutable: true, // Tell browsers these files rarely change
+  setHeaders: (res, path) => {
+    // Add additional cache headers for better performance
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable'); // 7 days
+  }
+}));
 
 // Serve creator dashboard
 app.get('/creator', (req, res) => {
